@@ -30,7 +30,6 @@ export const assetConfig = {
   testimonialsPath: import.meta.env.VITE_TESTIMONIALS_PATH || '/testimonials',
 }
 
-// These could also be moved to environment variables or a CMS
 export const sections: Record<string, SectionContent> = {
   features: {
     title: import.meta.env.VITE_FEATURES_TITLE || "Why Choose Us",
@@ -42,6 +41,23 @@ export const sections: Record<string, SectionContent> = {
         icon: "Users"
       }
     ]
+  },
+  testimonials: {
+    title: import.meta.env.VITE_TESTIMONIALS_TITLE || "Creating Moments That Matter",
+    description: import.meta.env.VITE_TESTIMONIALS_DESCRIPTION || "At CubbyLuxe, we don't just build cubby houses—we craft joy, laughter, and treasured memories. Each of our designs becomes the heart of family fun, inspiring imaginations and bringing loved ones closer together.",
+    items: [
+      {
+        title: "The Reynolds Family",
+        description: "Our cubby house is more than a play space—it's our daughter's favourite place to explore and imagine. Thank you, CubbyLuxe, for making her dreams come true!",
+        image: `${assetConfig.testimonialsPath}/placeholder.svg`
+      },
+      {
+        title: "The Carter Family",
+        description: "The quality and attention to detail are outstanding. We've recommended CubbyLuxe to all our friends!",
+        image: `${assetConfig.testimonialsPath}/placeholder.svg`
+      }
+    ],
+    footer: "Your family's happiness is our ultimate reward. Let us help you create a play space that will be cherished for years to come."
   },
   gallery: {
     title: import.meta.env.VITE_GALLERY_TITLE || "Our Portfolio",
@@ -64,27 +80,6 @@ export const sections: Record<string, SectionContent> = {
         description: "Unique architectural design implementation",
         image: `${assetConfig.galleryPath}/placeholder.svg`,
         style: "style3"
-      }
-    ]
-  },
-  testimonials: {
-    title: import.meta.env.VITE_TESTIMONIALS_TITLE || "What Our Clients Say",
-    description: import.meta.env.VITE_TESTIMONIALS_DESCRIPTION || "Read testimonials from our satisfied clients",
-    items: [
-      {
-        title: "John Doe",
-        description: "Outstanding service! The team was professional and delivered beyond our expectations.",
-        image: `${assetConfig.testimonialsPath}/placeholder.svg`
-      },
-      {
-        title: "Sarah Wilson",
-        description: "Extremely satisfied with the attention to detail and quality of work.",
-        image: `${assetConfig.testimonialsPath}/placeholder.svg`
-      },
-      {
-        title: "Michael Brown",
-        description: "The project was completed on time and the results were amazing!",
-        image: `${assetConfig.testimonialsPath}/placeholder.svg`
       }
     ]
   }
