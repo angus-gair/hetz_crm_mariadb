@@ -43,21 +43,21 @@ export const sections: Record<string, SectionContent> = {
     ]
   },
   testimonials: {
-    title: import.meta.env.VITE_TESTIMONIALS_TITLE || "Creating Moments That Matter",
-    description: import.meta.env.VITE_TESTIMONIALS_DESCRIPTION || "At CubbyLuxe, we don't just build cubby houses—we craft joy, laughter, and treasured memories. Each of our designs becomes the heart of family fun, inspiring imaginations and bringing loved ones closer together.",
+    title: import.meta.env.VITE_TESTIMONIALS_TITLE || "What Our Clients Say",
+    description: import.meta.env.VITE_TESTIMONIALS_DESCRIPTION || "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
     items: [
       {
         title: "The Reynolds Family",
-        description: "Our cubby house is more than a play space—it's our daughter's favourite place to explore and imagine. Thank you, CubbyLuxe, for making her dreams come true!",
+        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
         image: `${assetConfig.testimonialsPath}/placeholder.svg`
       },
       {
         title: "The Carter Family",
-        description: "The quality and attention to detail are outstanding. We've recommended CubbyLuxe to all our friends!",
+        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
         image: `${assetConfig.testimonialsPath}/placeholder.svg`
       }
     ],
-    footer: "Your family's happiness is our ultimate reward. Let us help you create a play space that will be cherished for years to come."
+    footer: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
   },
   gallery: {
     title: import.meta.env.VITE_GALLERY_TITLE || "Our Portfolio",
