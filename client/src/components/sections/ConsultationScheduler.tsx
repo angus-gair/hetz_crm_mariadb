@@ -12,6 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import { MapPin, Video } from "lucide-react";
 import { format } from "date-fns";
 
+const timeSlots = [
+  "9:00", "9:30", "10:00", "10:30", "11:00", "11:30",
+  "13:00", "13:30", "14:00", "14:30", "15:00", "15:30"
+];
+
 const consultationSchema = z.object({
   consultationType: z.enum(["onsite", "video"], {
     required_error: "Please select a consultation type",
@@ -23,6 +28,7 @@ const consultationSchema = z.object({
   preferredDate: z.date({
     required_error: "Please select a date",
   }),
+  preferredTime: z.string().min(1, "Please select a time slot"),
 });
 
 type ConsultationData = z.infer<typeof consultationSchema>;
@@ -40,6 +46,7 @@ export function ConsultationScheduler() {
       email: "",
       phone: "",
       notes: "",
+      preferredTime: "",
     },
   });
 
@@ -173,6 +180,44 @@ export function ConsultationScheduler() {
                       </FormItem>
                     )}
                   />
+
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium mb-3">Available Time Slots</h4>
+                    <FormField
+                      control={form.control}
+                      name="preferredTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              className="grid grid-cols-3 gap-2"
+                            >
+                              {timeSlots.map((time) => (
+                                <FormItem key={time}>
+                                  <FormControl>
+                                    <RadioGroupItem
+                                      value={time}
+                                      className="peer sr-only"
+                                      id={`time-${time}`}
+                                    />
+                                  </FormControl>
+                                  <FormLabel
+                                    htmlFor={`time-${time}`}
+                                    className="flex h-9 w-full items-center justify-center rounded-md border-2 border-muted bg-popover px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                                  >
+                                    {time}
+                                  </FormLabel>
+                                </FormItem>
+                              ))}
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-4">
