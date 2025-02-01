@@ -26,26 +26,27 @@ router.post('/schedule-consultation', async (req, res) => {
       notes,
       preferredDate,
       preferredTime,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      synced: false
     };
 
-    // Store for later processing
+    // Store locally first
     pendingConsultations.push(consultationRequest);
     console.log('New consultation request:', JSON.stringify(consultationRequest, null, 2));
 
-    // Try to sync with SuiteCRM but don't wait for it
-    try {
-      await suiteCRMService.createContact(consultationRequest);
-      console.log('Successfully synced with SuiteCRM');
-    } catch (error) {
-      // Log the error but don't fail the request
-      console.error('Failed to sync with SuiteCRM (will retry later):', error);
-    }
+    // Try to sync with SuiteCRM
+    const crmResult = await suiteCRMService.createContact(consultationRequest);
 
-    // Always return success to the user
+    // Update sync status
+    consultationRequest.synced = crmResult.success;
+
+    // Return success response with appropriate message
     res.json({
       success: true,
-      message: 'Thank you! Your consultation request has been received. We will contact you shortly to confirm your appointment.'
+      message: crmResult.success 
+        ? 'Thank you! Your consultation request has been received and processed.'
+        : 'Thank you! Your consultation request has been received. We will contact you shortly.',
+      details: crmResult.message
     });
 
   } catch (error) {

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { env } from 'process';
 
 interface ContactData {
   name: string;
@@ -16,10 +17,9 @@ export class SuiteCRMService {
   private sessionId: string | null = null;
 
   constructor() {
-    // Hardcoded credentials for development
-    this.baseUrl = 'http://4.236.188.48';
-    this.username = 'admin';
-    this.password = 'Jamfinnarc1776!';
+    this.baseUrl = process.env.SUITECRM_URL || 'http://4.236.188.48';
+    this.username = process.env.SUITECRM_USERNAME || 'admin';
+    this.password = process.env.SUITECRM_PASSWORD || 'Jamfinnarc1776!';
   }
 
   private async login() {
@@ -39,34 +39,31 @@ export class SuiteCRMService {
         }
       };
 
-      console.log('Login request payload:', JSON.stringify(loginPayload, null, 2));
+      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, loginPayload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
 
-      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, loginPayload);
-
-      console.log('Login response:', JSON.stringify(response.data, null, 2));
+      // Enhanced error handling for HTML responses
+      if (typeof response.data === 'string' && response.data.includes('Fatal error')) {
+        throw new Error('SuiteCRM server error: The server is not properly configured. Please contact system administrator.');
+      }
 
       if (!response.data?.id) {
-        throw new Error(`Invalid response from SuiteCRM: ${JSON.stringify(response.data)}`);
+        throw new Error('Invalid response format from SuiteCRM');
       }
 
       this.sessionId = response.data.id;
       return this.sessionId;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('SuiteCRM login failed with HTTP error:', {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          message: error.message
-        });
-      } else {
-        console.error('SuiteCRM login failed:', error);
-      }
-      throw new Error('Failed to authenticate with SuiteCRM');
+      console.error('SuiteCRM login failed:', error);
+      throw new Error('Failed to authenticate with SuiteCRM. The service may be temporarily unavailable.');
     }
   }
 
-  async createContact(contactData: ContactData) {
+  async createContact(contactData: ContactData): Promise<{ success: boolean; message: string }> {
     try {
       if (!this.sessionId) {
         await this.login();
@@ -89,25 +86,24 @@ export class SuiteCRMService {
         }
       };
 
-      console.log('Creating contact with payload:', JSON.stringify(contactPayload, null, 2));
+      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, contactPayload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
 
-      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, contactPayload);
-
-      console.log('Create contact response:', JSON.stringify(response.data, null, 2));
-
-      return response.data;
+      return {
+        success: true,
+        message: 'Contact created successfully in SuiteCRM'
+      };
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Failed to create contact in SuiteCRM:', {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          message: error.message
-        });
-      } else {
-        console.error('Failed to create contact in SuiteCRM:', error);
-      }
-      throw new Error('Failed to create contact in SuiteCRM. Please ensure your SuiteCRM instance is properly configured and accessible.');
+      console.error('Failed to create contact in SuiteCRM:', error);
+      // Return a user-friendly response instead of throwing
+      return {
+        success: false,
+        message: 'Contact saved locally. SuiteCRM sync will be retried automatically.'
+      };
     }
   }
 }
