@@ -4,7 +4,11 @@ export const siteConfig = {
     email: import.meta.env.VITE_CONTACT_EMAIL || "contact@example.com",
     phone: import.meta.env.VITE_CONTACT_PHONE || "+1234567890",
   },
-  social: JSON.parse(import.meta.env.VITE_SOCIAL_LINKS || '{"facebook":"","twitter":"","instagram":""}'),
+  social: {
+    instagram: "https://instagram.com/cubbyluxe",
+    facebook: "https://facebook.com/CubbyLuxe",
+    pinterest: "https://pinterest.com/CubbyLuxe"
+  },
   hero: {
     title: import.meta.env.VITE_HERO_TITLE || "Welcome to Our Company",
     subtitle: import.meta.env.VITE_HERO_SUBTITLE || "Your trusted partner in success",
