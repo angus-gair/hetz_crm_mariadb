@@ -34,19 +34,11 @@ export function Hero() {
         </div>
 
         <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2">
-          <div className="relative aspect-video overflow-hidden rounded-lg shadow-xl">
-            <img
-              src="/images/cubby-1.jpg"
-              alt="Premium Custom Cubby House Example 1"
-              className="object-cover w-full h-full"
-            />
+          <div className="relative aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+            <span className="text-gray-500">Hero Image 1</span>
           </div>
-          <div className="relative aspect-video overflow-hidden rounded-lg shadow-xl">
-            <img
-              src="/images/cubby-2.jpg"
-              alt="Premium Custom Cubby House Example 2"
-              className="object-cover w-full h-full"
-            />
+          <div className="relative aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+            <span className="text-gray-500">Hero Image 2</span>
           </div>
         </div>
       </div>
