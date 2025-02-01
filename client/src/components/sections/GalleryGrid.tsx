@@ -1,7 +1,6 @@
 import { type FC, useState } from "react";
 import { sections } from "@/config";
 import { Card } from "@/components/ui/card";
-import Image from "@/components/ui/image";
 import { Button } from "@/components/ui/button";
 
 type StyleFilter = "all" | "style1" | "style2" | "style3" | "style4";
@@ -50,7 +49,7 @@ export const GalleryGrid: FC = () => {
             <Card key={index} className="overflow-hidden">
               {item.image && (
                 <div className="aspect-video w-full">
-                  <Image
+                  <img
                     src={item.image}
                     alt={item.title}
                     className="object-cover w-full h-full"
