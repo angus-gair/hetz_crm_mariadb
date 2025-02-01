@@ -76,9 +76,9 @@ export function ConsultationScheduler() {
   }
 
   return (
-    <div className="w-full py-12 md:py-24 lg:py-32 bg-background">
-      <div className="container px-4 md:px-6">
-        <div className="flex flex-col items-center justify-center space-y-4 text-center">
+    <div className="w-full">
+      <div className="container px-4 md:px-6 max-w-7xl mx-auto">
+        <div className="flex flex-col items-center justify-center space-y-6 text-center mb-12">
           <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
             Schedule a Consultation
           </h2>
@@ -87,20 +87,20 @@ export function ConsultationScheduler() {
           </p>
         </div>
 
-        <div className="mx-auto max-w-4xl mt-8">
+        <div className="max-w-4xl mx-auto">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
               {/* Calendar and Time Slots */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Calendar */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Date & Time</h3>
+                  <h3 className="text-lg font-semibold mb-6">Date & Time</h3>
                   <FormField
                     control={form.control}
                     name="preferredDate"
                     render={({ field }) => (
                       <FormItem>
-                        <div className="p-4 border rounded-md">
+                        <div className="p-6 border rounded-md shadow-sm">
                           <Calendar
                             mode="single"
                             selected={field.value}
@@ -125,17 +125,17 @@ export function ConsultationScheduler() {
 
                 {/* Time Slots */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Available Time Slots</h3>
+                  <h3 className="text-lg font-semibold mb-6">Available Time Slots</h3>
                   <FormField
                     control={form.control}
                     name="preferredTime"
                     render={({ field }) => (
                       <FormItem>
-                        <div className="border rounded-md p-4">
+                        <div className="p-6 border rounded-md shadow-sm">
                           <RadioGroup
                             onValueChange={field.onChange}
                             defaultValue={field.value}
-                            className="grid grid-cols-3 gap-2"
+                            className="grid grid-cols-3 gap-3"
                           >
                             {timeSlots.map((time) => (
                               <FormItem key={time}>
@@ -148,7 +148,7 @@ export function ConsultationScheduler() {
                                 </FormControl>
                                 <FormLabel
                                   htmlFor={`time-${time}`}
-                                  className="flex h-9 w-full items-center justify-center rounded-md border-2 border-muted bg-popover px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                                  className="flex h-10 w-full items-center justify-center rounded-md border-2 border-muted bg-popover px-3 text-sm hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                                 >
                                   {time}
                                 </FormLabel>
@@ -164,15 +164,15 @@ export function ConsultationScheduler() {
               </div>
 
               {/* Your Information */}
-              <div className="border rounded-md p-6 mt-8">
-                <h3 className="text-lg font-semibold mb-4">Your Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border rounded-md p-8 shadow-sm">
+                <h3 className="text-lg font-semibold mb-6">Your Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel className="text-sm font-medium">Name</FormLabel>
                         <FormControl>
                           <Input placeholder="Your full name" {...field} />
                         </FormControl>
@@ -186,7 +186,7 @@ export function ConsultationScheduler() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone</FormLabel>
+                        <FormLabel className="text-sm font-medium">Phone</FormLabel>
                         <FormControl>
                           <Input type="tel" placeholder="Your phone number" {...field} />
                         </FormControl>
@@ -200,7 +200,7 @@ export function ConsultationScheduler() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel className="text-sm font-medium">Email</FormLabel>
                         <FormControl>
                           <Input type="email" placeholder="your@email.com" {...field} />
                         </FormControl>
@@ -214,7 +214,7 @@ export function ConsultationScheduler() {
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Notes (Optional)</FormLabel>
+                        <FormLabel className="text-sm font-medium">Notes (Optional)</FormLabel>
                         <FormControl>
                           <Input placeholder="Any special requirements or questions" {...field} />
                         </FormControl>
@@ -225,7 +225,7 @@ export function ConsultationScheduler() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button type="submit" className="w-full h-11 text-base" disabled={isSubmitting}>
                 {isSubmitting ? "Scheduling..." : "Schedule Consultation"}
               </Button>
             </form>
