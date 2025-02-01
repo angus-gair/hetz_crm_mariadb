@@ -10,10 +10,8 @@ export function Navbar() {
   const navigation = [
     { name: "Home", href: "#home" },
     { name: "Portfolio", href: "#portfolio" },
-    { name: "Design Session", href: "#design" },
     { name: "About Us", href: "#about" },
-    { name: "Calculator", href: "#calculator" },
-    { name: "Book Consultation", href: "#consultation" },
+    { name: "Book a Consultation", href: "#consultation" },
   ];
 
   useEffect(() => {
@@ -73,7 +71,7 @@ export function Navbar() {
           </div>
 
           {/* Desktop menu */}
-          <div className="hidden md:flex md:items-center md:space-x-4">
+          <div className="hidden md:flex md:items-center md:space-x-8">
             {navigation.map((item) => (
               <a
                 key={item.name}
@@ -90,9 +88,6 @@ export function Navbar() {
                 {item.name}
               </a>
             ))}
-            <Button size="sm" variant="default">
-              0468 333 745
-            </Button>
           </div>
 
           {/* Mobile menu button */}
@@ -132,9 +127,6 @@ export function Navbar() {
                 {item.name}
               </a>
             ))}
-            <Button size="sm" variant="default" className="w-full mt-4">
-              0468 333 745
-            </Button>
           </div>
         </div>
       )}
