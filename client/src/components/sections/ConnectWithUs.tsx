@@ -10,43 +10,40 @@ export function ConnectWithUs() {
             <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
               Connect With Us
             </h2>
-            <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+            <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed">
               Follow us on social media for inspiration and updates
             </p>
           </div>
 
           <div className="flex space-x-16 mt-8">
-            {/* Instagram */}
             <a
-              href="https://instagram.com/cubbyluxe"
+              href={siteConfig.social.instagram}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-col items-center space-y-3 text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-gray-600 hover:text-gray-900 transition-colors"
+              aria-label="Follow us on Instagram"
             >
               <SiInstagram className="h-12 w-12" />
-              <span className="text-sm">@cubbyluxe</span>
             </a>
 
-            {/* Facebook */}
             <a
-              href="https://facebook.com/CubbyLuxe"
+              href={siteConfig.social.facebook}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-col items-center space-y-3 text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-gray-600 hover:text-gray-900 transition-colors"
+              aria-label="Follow us on Facebook"
             >
               <SiFacebook className="h-12 w-12" />
-              <span className="text-sm">CubbyLuxe</span>
             </a>
 
-            {/* Pinterest */}
             <a
-              href="https://pinterest.com/CubbyLuxe"
+              href={siteConfig.social.pinterest}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-col items-center space-y-3 text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-gray-600 hover:text-gray-900 transition-colors"
+              aria-label="Follow us on Pinterest"
             >
               <SiPinterest className="h-12 w-12" />
-              <span className="text-sm">CubbyLuxe</span>
             </a>
           </div>
         </div>

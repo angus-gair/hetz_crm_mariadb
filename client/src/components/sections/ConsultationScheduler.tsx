@@ -5,12 +5,10 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, Video } from "lucide-react";
-import { format } from "date-fns";
 
 const timeSlots = [
   "9:00", "9:30", "10:00", "10:30", "11:00", "11:30",
@@ -58,7 +56,7 @@ export function ConsultationScheduler() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          preferredDate: format(data.preferredDate, "yyyy-MM-dd"),
+          preferredDate: date?.toISOString(),
         }),
       });
 
@@ -89,7 +87,7 @@ export function ConsultationScheduler() {
           <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
             Schedule a Consultation
           </h2>
-          <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed">
+          <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
             Book a free consultation with our design experts to discuss your dream cubby house
           </p>
         </div>
@@ -169,21 +167,23 @@ export function ConsultationScheduler() {
                       name="preferredDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col w-full">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={(date) => {
-                              field.onChange(date);
-                              setDate(date);
-                            }}
-                            disabled={(date) => {
-                              const day = date.getDay();
-                              const today = new Date();
-                              today.setHours(0, 0, 0, 0);
-                              return date < today || day === 0 || day === 6;
-                            }}
-                            className="rounded-md border shadow-sm w-full"
-                          />
+                          <div className="flex-1 p-4 border rounded-md shadow-sm">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={(date) => {
+                                field.onChange(date);
+                                setDate(date);
+                              }}
+                              disabled={(date) => {
+                                const day = date.getDay();
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                return date < today || day === 0 || day === 6;
+                              }}
+                              className="w-full"
+                            />
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
