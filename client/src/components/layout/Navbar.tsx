@@ -1,47 +1,78 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [location] = useLocation();
+  const [activeSection, setActiveSection] = useState('home');
 
   const navigation = [
-    { name: "Home", href: "/" },
-    { name: "About", href: "/about" },
-    { name: "Portfolio", href: "/portfolio" },
-    { name: "Contact", href: "/contact" },
+    { name: "Home", href: "#home" },
+    { name: "Portfolio", href: "#portfolio" },
+    { name: "About Us", href: "#about" },
+    { name: "Book a Consultation", href: "#consultation" },
   ];
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    // Observe all sections
+    document.querySelectorAll('section[id]').forEach((section) => {
+      observer.observe(section);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const scrollToSection = (href: string) => {
+    const element = document.querySelector(href);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setIsOpen(false);
+  };
 
   return (
     <nav className="w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 border-b">
       <div className="container px-4 md:px-6">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
+            <a href="#home" className="flex items-center space-x-2" onClick={(e) => {
+              e.preventDefault();
+              scrollToSection('#home');
+            }}>
               <span className="text-xl font-bold">{siteConfig.name}</span>
-            </Link>
+            </a>
           </div>
-          
+
           {/* Desktop menu */}
           <div className="hidden md:flex md:items-center md:space-x-8">
             {navigation.map((item) => (
-              <Link
+              <a
                 key={item.name}
                 href={item.href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToSection(item.href);
+                }}
                 className={`text-sm font-medium transition-colors hover:text-primary
-                  ${location === item.href ? 'text-primary' : 'text-muted-foreground'}`}
+                  ${activeSection === item.href.replace('#', '') ? 'text-primary' : 'text-muted-foreground'}`}
               >
                 {item.name}
-              </Link>
+              </a>
             ))}
-            <Button asChild>
-              <Link href="#consultation">Schedule Consultation</Link>
-            </Button>
           </div>
-          
+
           {/* Mobile menu button */}
           <div className="flex md:hidden">
             <button
@@ -64,24 +95,22 @@ export function Navbar() {
         <div className="md:hidden">
           <div className="space-y-1 px-4 pb-3 pt-2">
             {navigation.map((item) => (
-              <Link
+              <a
                 key={item.name}
                 href={item.href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToSection(item.href);
+                }}
                 className={`block rounded-md px-3 py-2 text-base font-medium
-                  ${location === item.href
+                  ${activeSection === item.href.replace('#', '')
                     ? 'text-primary'
                     : 'text-gray-700 hover:bg-gray-50 hover:text-primary'
                   }`}
-                onClick={() => setIsOpen(false)}
               >
                 {item.name}
-              </Link>
+              </a>
             ))}
-            <Button asChild className="w-full mt-4">
-              <Link href="#consultation" onClick={() => setIsOpen(false)}>
-                Schedule Consultation
-              </Link>
-            </Button>
           </div>
         </div>
       )}

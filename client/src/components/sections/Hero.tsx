@@ -1,10 +1,11 @@
 import { siteConfig } from "@/config";
+import { Button } from "@/components/ui/button";
 
 export function Hero() {
   const { title, subtitle } = siteConfig.hero;
-  
+
   return (
-    <section className="relative w-full min-h-[60vh] flex items-center justify-center bg-background">
+    <section id="home" className="relative w-full min-h-[60vh] flex items-center justify-center bg-background">
       <div className="container px-4 md:px-6">
         <div className="flex flex-col items-center space-y-4 text-center">
           <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
@@ -13,13 +14,19 @@ export function Hero() {
           <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl">
             {subtitle}
           </p>
-          <div className="space-x-4">
-            <a
-              className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-              href="#consultation"
+          <div className="flex space-x-4">
+            <Button
+              variant="outline"
+              className="bg-gray-100"
+              asChild
             >
-              Schedule a Consultation
-            </a>
+              <a href="#portfolio">View Portfolio</a>
+            </Button>
+            <Button
+              asChild
+            >
+              <a href="#consultation">Get a Quote</a>
+            </Button>
           </div>
         </div>
       </div>
