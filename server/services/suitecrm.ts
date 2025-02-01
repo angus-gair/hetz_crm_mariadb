@@ -16,13 +16,19 @@ export class SuiteCRMService {
   private sessionId: string | null = null;
 
   constructor() {
-    this.baseUrl = process.env.SUITECRM_URL || '';
+    const url = process.env.SUITECRM_URL || '';
+    // Ensure URL has protocol
+    this.baseUrl = url.startsWith('http') ? url : `https://${url}`;
     this.username = process.env.SUITECRM_USERNAME || '';
     this.password = process.env.SUITECRM_PASSWORD || '';
   }
 
   private async login() {
     try {
+      if (!this.baseUrl || !this.username || !this.password) {
+        throw new Error('SuiteCRM credentials are not properly configured');
+      }
+
       const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, {
         method: 'login',
         input_type: 'JSON',
@@ -35,6 +41,10 @@ export class SuiteCRMService {
           application: 'CubbyLuxe Integration'
         }
       });
+
+      if (!response.data?.id) {
+        throw new Error('Invalid response from SuiteCRM');
+      }
 
       this.sessionId = response.data.id;
       return this.sessionId;
@@ -70,7 +80,7 @@ export class SuiteCRMService {
       return response.data;
     } catch (error) {
       console.error('Failed to create contact in SuiteCRM:', error);
-      throw new Error('Failed to create contact in SuiteCRM');
+      throw new Error('Failed to create contact in SuiteCRM. Please ensure your SuiteCRM instance is properly configured and accessible.');
     }
   }
 }

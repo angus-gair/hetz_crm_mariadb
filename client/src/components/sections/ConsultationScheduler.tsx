@@ -55,7 +55,11 @@ export function ConsultationScheduler() {
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to schedule consultation");
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "Failed to schedule consultation");
+      }
 
       toast({
         title: "Success!",
@@ -65,9 +69,10 @@ export function ConsultationScheduler() {
       form.reset();
       setDate(undefined);
     } catch (error) {
+      console.error('Consultation scheduling error:', error);
       toast({
         title: "Error",
-        description: "Failed to schedule consultation. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to schedule consultation. Please try again.",
         variant: "destructive",
       });
     } finally {
