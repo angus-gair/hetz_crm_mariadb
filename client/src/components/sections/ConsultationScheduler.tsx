@@ -83,32 +83,32 @@ export function ConsultationScheduler() {
   }
 
   return (
-    <section id="consultation" className="w-full py-12 md:py-24 lg:py-32 bg-background">
+    <section className="w-full py-12 md:py-24 lg:py-32 bg-background">
       <div className="container px-4 md:px-6">
-        <div className="flex flex-col items-center justify-center space-y-4 text-center">
+        <div className="flex flex-col items-center justify-center space-y-4 text-center mb-8">
           <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
             Schedule a Consultation
           </h2>
-          <p className="max-w-[900px] text-gray-500 md:text-xl">
+          <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed">
             Book a free consultation with our design experts to discuss your dream cubby house
           </p>
         </div>
 
-        <div className="mx-auto max-w-4xl mt-12">
+        <div className="mx-auto max-w-4xl">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Select Consultation Type</h3>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Select Consultation Type</h3>
                 <FormField
                   control={form.control}
                   name="consultationType"
                   render={({ field }) => (
-                    <FormItem className="space-y-3">
+                    <FormItem>
                       <FormControl>
                         <RadioGroup
                           onValueChange={field.onChange}
                           defaultValue={field.value}
-                          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                          className="grid grid-cols-2 gap-4"
                         >
                           <FormItem>
                             <FormControl>
@@ -120,11 +120,13 @@ export function ConsultationScheduler() {
                             </FormControl>
                             <FormLabel
                               htmlFor="onsite"
-                              className="flex flex-col items-center justify-center h-40 rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                              className="flex flex-col items-center justify-center h-24 rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                             >
-                              <MapPin className="h-8 w-8 mb-2" />
-                              <span className="font-semibold mb-1">On-site Visit</span>
-                              <span className="text-sm text-muted-foreground">We'll visit your location</span>
+                              <div className="flex items-center space-x-2">
+                                <MapPin className="h-5 w-5" />
+                                <span className="font-medium">On-site Visit</span>
+                              </div>
+                              <span className="text-sm text-muted-foreground mt-1">We'll visit your location</span>
                             </FormLabel>
                           </FormItem>
 
@@ -138,11 +140,13 @@ export function ConsultationScheduler() {
                             </FormControl>
                             <FormLabel
                               htmlFor="video"
-                              className="flex flex-col items-center justify-center h-40 rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                              className="flex flex-col items-center justify-center h-24 rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                             >
-                              <Video className="h-8 w-8 mb-2" />
-                              <span className="font-semibold mb-1">Video Call</span>
-                              <span className="text-sm text-muted-foreground">Online consultation</span>
+                              <div className="flex items-center space-x-2">
+                                <Video className="h-5 w-5" />
+                                <span className="font-medium">Video Call</span>
+                              </div>
+                              <span className="text-sm text-muted-foreground mt-1">Online consultation</span>
                             </FormLabel>
                           </FormItem>
                         </RadioGroup>
@@ -154,7 +158,7 @@ export function ConsultationScheduler() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <h3 className="text-lg font-semibold">Date & Time</h3>
                   <FormField
                     control={form.control}
@@ -174,15 +178,15 @@ export function ConsultationScheduler() {
                             today.setHours(0, 0, 0, 0);
                             return date < today || day === 0 || day === 6;
                           }}
-                          className="rounded-md border"
+                          className="rounded-md border shadow-sm"
                         />
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium mb-3">Available Time Slots</h4>
+                  <div>
+                    <h4 className="text-base font-medium mb-3">Available Time Slots</h4>
                     <FormField
                       control={form.control}
                       name="preferredTime"
@@ -271,7 +275,11 @@ export function ConsultationScheduler() {
                       <FormItem>
                         <FormLabel>Notes (Optional)</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Any special requirements or questions" {...field} />
+                          <Textarea 
+                            placeholder="Any special requirements or questions" 
+                            className="min-h-[120px]"
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
