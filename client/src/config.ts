@@ -39,8 +39,7 @@ export const sections: Record<string, SectionContent> = {
         title: "Expert Team",
         description: "Our experienced professionals deliver excellence",
         icon: "Users"
-      },
-      // Add more features as needed
+      }
     ]
   },
   gallery: {
@@ -48,8 +47,18 @@ export const sections: Record<string, SectionContent> = {
     description: import.meta.env.VITE_GALLERY_DESCRIPTION || "Explore our recent projects and achievements",
     items: [
       {
-        title: "Project 1",
-        description: "Description of project 1",
+        title: "Modern Design Project",
+        description: "A contemporary approach to space utilization",
+        image: `${assetConfig.galleryPath}/placeholder.svg`
+      },
+      {
+        title: "Renovation Excellence",
+        description: "Complete home transformation project",
+        image: `${assetConfig.galleryPath}/placeholder.svg`
+      },
+      {
+        title: "Custom Build",
+        description: "Unique architectural design implementation",
         image: `${assetConfig.galleryPath}/placeholder.svg`
       }
     ]
@@ -60,7 +69,17 @@ export const sections: Record<string, SectionContent> = {
     items: [
       {
         title: "John Doe",
-        description: "Great service and professional team!",
+        description: "Outstanding service! The team was professional and delivered beyond our expectations.",
+        image: `${assetConfig.testimonialsPath}/placeholder.svg`
+      },
+      {
+        title: "Sarah Wilson",
+        description: "Extremely satisfied with the attention to detail and quality of work.",
+        image: `${assetConfig.testimonialsPath}/placeholder.svg`
+      },
+      {
+        title: "Michael Brown",
+        description: "The project was completed on time and the results were amazing!",
         image: `${assetConfig.testimonialsPath}/placeholder.svg`
       }
     ]
