@@ -1,10 +1,9 @@
 import { type Config } from "tailwindcss";
-import { shadcnPlugin } from "./client/src/lib/shadcn-plugin";
 
 export default {
   darkMode: ["class"],
   content: [
-    "./client/**/*.{ts,tsx}",
+    "./client/src/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
   ],
   theme: {
@@ -72,5 +71,5 @@ export default {
       },
     },
   },
-  plugins: [shadcnPlugin, require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate")],
 } satisfies Config;

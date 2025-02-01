@@ -1,6 +1,6 @@
 import React from "react";
-import { Card } from "../ui/card";
-import { Avatar } from "../ui/avatar";
+import { Card } from "@/components/ui/card";
+import { Avatar } from "@/components/ui/avatar";
 import { Star } from "lucide-react";
 
 const testimonials = [
