@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config";
 
@@ -21,7 +21,6 @@ export function Navbar() {
           if (entry.isIntersecting) {
             const sectionId = entry.target.id;
             setActiveSection(sectionId);
-            // Update URL hash without scrolling
             history.replaceState(null, '', `#${sectionId}`);
           }
         });
@@ -29,7 +28,6 @@ export function Navbar() {
       { threshold: 0.5 }
     );
 
-    // Observe all sections
     document.querySelectorAll('section[id]').forEach((section) => {
       observer.observe(section);
     });
@@ -41,7 +39,7 @@ export function Navbar() {
     const sectionId = href.replace('#', '');
     const element = document.getElementById(sectionId);
     if (element) {
-      const navHeight = 64; // Height of the navbar
+      const navHeight = 64;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - navHeight;
 
@@ -57,7 +55,7 @@ export function Navbar() {
     <nav className="w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 border-b">
       <div className="container px-4 md:px-6">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
             <a
               href="#home"
               className="flex items-center space-x-2"
@@ -69,6 +67,12 @@ export function Navbar() {
               <span className="text-xl font-bold">{siteConfig.name}</span>
             </a>
           </div>
+
+          {/* Phone number - Always visible */}
+          <a href="tel:1300123456" className="hidden md:flex items-center space-x-2 text-primary">
+            <Phone className="h-4 w-4" />
+            <span className="font-medium">1300 123 456</span>
+          </a>
 
           {/* Desktop menu */}
           <div className="hidden md:flex md:items-center md:space-x-8">
@@ -91,7 +95,12 @@ export function Navbar() {
           </div>
 
           {/* Mobile menu button */}
-          <div className="flex md:hidden">
+          <div className="flex items-center space-x-4 md:hidden">
+            {/* Phone number on mobile */}
+            <a href="tel:1300123456" className="flex items-center space-x-2 text-primary">
+              <Phone className="h-4 w-4" />
+              <span className="font-medium">1300 123 456</span>
+            </a>
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
