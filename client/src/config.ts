@@ -22,11 +22,18 @@ export type SectionContent = {
   }>
 }
 
+// Asset paths configuration
+export const assetConfig = {
+  imagesBasePath: import.meta.env.VITE_IMAGES_PATH || '/images',
+  galleryPath: import.meta.env.VITE_GALLERY_PATH || '/gallery',
+  testimonialsPath: import.meta.env.VITE_TESTIMONIALS_PATH || '/testimonials',
+}
+
 // These could also be moved to environment variables or a CMS
 export const sections: Record<string, SectionContent> = {
   features: {
-    title: "Why Choose Us",
-    description: "We provide comprehensive solutions tailored to your needs",
+    title: import.meta.env.VITE_FEATURES_TITLE || "Why Choose Us",
+    description: import.meta.env.VITE_FEATURES_DESCRIPTION || "We provide comprehensive solutions tailored to your needs",
     items: [
       {
         title: "Expert Team",
@@ -37,27 +44,25 @@ export const sections: Record<string, SectionContent> = {
     ]
   },
   gallery: {
-    title: "Our Portfolio",
-    description: "Explore our recent projects and achievements",
+    title: import.meta.env.VITE_GALLERY_TITLE || "Our Portfolio",
+    description: import.meta.env.VITE_GALLERY_DESCRIPTION || "Explore our recent projects and achievements",
     items: [
       {
         title: "Project 1",
         description: "Description of project 1",
-        image: "/gallery/project1.jpg"
-      },
-      // Add more gallery items
+        image: `${assetConfig.galleryPath}/placeholder.svg`
+      }
     ]
   },
   testimonials: {
-    title: "What Our Clients Say",
-    description: "Read testimonials from our satisfied clients",
+    title: import.meta.env.VITE_TESTIMONIALS_TITLE || "What Our Clients Say",
+    description: import.meta.env.VITE_TESTIMONIALS_DESCRIPTION || "Read testimonials from our satisfied clients",
     items: [
       {
         title: "John Doe",
         description: "Great service and professional team!",
-        image: "/testimonials/john.jpg"
-      },
-      // Add more testimonials
+        image: `${assetConfig.testimonialsPath}/placeholder.svg`
+      }
     ]
   }
 }
