@@ -97,6 +97,7 @@ export function ConsultationScheduler() {
         <div className="mx-auto max-w-4xl">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              {/* Consultation Type Selection */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">Select Consultation Type</h3>
                 <FormField
@@ -157,101 +158,41 @@ export function ConsultationScheduler() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Your Information - Now on the left */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Your Information</h3>
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Your full name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="your@email.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone</FormLabel>
-                        <FormControl>
-                          <Input type="tel" placeholder="Your phone number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notes (Optional)</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Any special requirements or questions" 
-                            className="min-h-[120px]"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Date & Time - Now on the right */}
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold">Date & Time</h3>
-                  <FormField
-                    control={form.control}
-                    name="preferredDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={(date) => {
-                            field.onChange(date);
-                            setDate(date);
-                          }}
-                          disabled={(date) => {
-                            const day = date.getDay();
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            return date < today || day === 0 || day === 6;
-                          }}
-                          className="rounded-md border shadow-sm"
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
+              {/* Date & Time Selection */}
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                  {/* Calendar */}
                   <div>
-                    <h4 className="text-base font-medium mb-3">Available Time Slots</h4>
+                    <h3 className="text-lg font-semibold mb-4">Date & Time</h3>
+                    <FormField
+                      control={form.control}
+                      name="preferredDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={(date) => {
+                              field.onChange(date);
+                              setDate(date);
+                            }}
+                            disabled={(date) => {
+                              const day = date.getDay();
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              return date < today || day === 0 || day === 6;
+                            }}
+                            className="rounded-md border shadow-sm"
+                          />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Time Slots */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Available Time Slots</h3>
                     <FormField
                       control={form.control}
                       name="preferredTime"
@@ -281,6 +222,68 @@ export function ConsultationScheduler() {
                                 </FormItem>
                               ))}
                             </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Your Information - Two Columns */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Your Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Your full name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone</FormLabel>
+                          <FormControl>
+                            <Input type="tel" placeholder="Your phone number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="your@email.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notes (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Any special requirements or questions" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
