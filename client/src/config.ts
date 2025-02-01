@@ -33,12 +33,27 @@ export const assetConfig = {
 export const sections: Record<string, SectionContent> = {
   features: {
     title: import.meta.env.VITE_FEATURES_TITLE || "Why Choose Us",
-    description: import.meta.env.VITE_FEATURES_DESCRIPTION || "We provide comprehensive solutions tailored to your needs",
+    description: import.meta.env.VITE_FEATURES_DESCRIPTION || "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
     items: [
       {
-        title: "Expert Team",
-        description: "Our experienced professionals deliver excellence",
-        icon: "Users"
+        title: "Quality Craftsmanship",
+        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+        icon: "Hammer"
+      },
+      {
+        title: "Safety First",
+        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+        icon: "Shield"
+      },
+      {
+        title: "Custom Design",
+        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+        icon: "Pencil"
+      },
+      {
+        title: "Lifetime Warranty",
+        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+        icon: "Star"
       }
     ]
   },
