@@ -31,7 +31,7 @@ export class SuiteCRMService {
 
       console.log('Attempting to connect to SuiteCRM at:', this.baseUrl);
 
-      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, {
+      const loginPayload = {
         method: 'login',
         input_type: 'JSON',
         response_type: 'JSON',
@@ -42,16 +42,31 @@ export class SuiteCRMService {
           },
           application: 'CubbyLuxe Integration'
         }
-      });
+      };
+
+      console.log('Login request payload:', JSON.stringify(loginPayload, null, 2));
+
+      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, loginPayload);
+
+      console.log('Login response:', JSON.stringify(response.data, null, 2));
 
       if (!response.data?.id) {
-        throw new Error('Invalid response from SuiteCRM');
+        throw new Error(`Invalid response from SuiteCRM: ${JSON.stringify(response.data)}`);
       }
 
       this.sessionId = response.data.id;
       return this.sessionId;
     } catch (error) {
-      console.error('SuiteCRM login failed:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('SuiteCRM login failed with HTTP error:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message
+        });
+      } else {
+        console.error('SuiteCRM login failed:', error);
+      }
       throw new Error('Failed to authenticate with SuiteCRM');
     }
   }
@@ -62,7 +77,7 @@ export class SuiteCRMService {
         await this.login();
       }
 
-      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, {
+      const contactPayload = {
         method: 'set_entry',
         input_type: 'JSON',
         response_type: 'JSON',
@@ -77,11 +92,26 @@ export class SuiteCRMService {
             { name: 'description', value: `Notes: ${contactData.notes || ''}\nPreferred Date: ${contactData.preferredDate || ''}\nPreferred Time: ${contactData.preferredTime || ''}` }
           ]
         }
-      });
+      };
+
+      console.log('Creating contact with payload:', JSON.stringify(contactPayload, null, 2));
+
+      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, contactPayload);
+
+      console.log('Create contact response:', JSON.stringify(response.data, null, 2));
 
       return response.data;
     } catch (error) {
-      console.error('Failed to create contact in SuiteCRM:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Failed to create contact in SuiteCRM:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message
+        });
+      } else {
+        console.error('Failed to create contact in SuiteCRM:', error);
+      }
       throw new Error('Failed to create contact in SuiteCRM. Please ensure your SuiteCRM instance is properly configured and accessible.');
     }
   }
