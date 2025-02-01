@@ -68,10 +68,10 @@ export const siteConfig: SiteConfig = {
 
 // Asset Configuration
 export const assetConfig: AssetConfig = {
-  imagesBasePath: '/attached_assets',
-  galleryPath: '/attached_assets',
-  testimonialsPath: '/attached_assets',
-  teamPath: '/attached_assets'
+  imagesBasePath: '/images',
+  galleryPath: '/images/portfolio',
+  testimonialsPath: '/images/testimonials',
+  teamPath: '/images/team'
 }
 
 // Sections Configuration
@@ -125,19 +125,19 @@ export const sections: Record<string, SectionContent> = {
       {
         title: "Enchanted Castle",
         description: "A magical two-story cubby house with slide and climbing wall",
-        image: `${assetConfig.galleryPath}/image_1738423401262.png`,
+        image: `/images/portfolio/Cubby_1.jpg`,
         style: "style1"
       },
       {
         title: "Treehouse Haven",
         description: "Natural wooden design with rope bridge and secret hideout",
-        image: `${assetConfig.galleryPath}/image_1738423401262.png`,
+        image: `/images/portfolio/Cubby_22.jpg`,
         style: "style2"
       },
       {
         title: "Modern Playhouse",
         description: "Contemporary design with multiple play areas",
-        image: `${assetConfig.galleryPath}/image_1738423401262.png`,
+        image: `/images/portfolio/Cubby_26.jpg`,
         style: "style3"
       }
     ]
