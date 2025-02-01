@@ -162,13 +162,13 @@ export function ConsultationScheduler() {
               <div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                   {/* Calendar */}
-                  <div>
+                  <div className="w-full">
                     <h3 className="text-lg font-semibold mb-4">Date & Time</h3>
                     <FormField
                       control={form.control}
                       name="preferredDate"
                       render={({ field }) => (
-                        <FormItem className="flex flex-col">
+                        <FormItem className="flex flex-col w-full">
                           <Calendar
                             mode="single"
                             selected={field.value}
@@ -182,7 +182,7 @@ export function ConsultationScheduler() {
                               today.setHours(0, 0, 0, 0);
                               return date < today || day === 0 || day === 6;
                             }}
-                            className="rounded-md border shadow-sm"
+                            className="rounded-md border shadow-sm w-full"
                           />
                           <FormMessage />
                         </FormItem>

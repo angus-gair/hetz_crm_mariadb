@@ -5,7 +5,7 @@ export function Hero() {
   const { title, subtitle } = siteConfig.hero;
 
   return (
-    <section id="home" className="w-full py-12 md:py-24 lg:py-32 bg-background">
+    <section id="home" className="w-full py-8 md:py-16 lg:py-24 bg-background">
       <div className="container px-4 md:px-6">
         <div className="flex flex-col items-center space-y-8 text-center">
           <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
