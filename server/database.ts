@@ -28,13 +28,13 @@ export async function query<T>(sql: string, params?: any[]): Promise<T> {
 export async function initDatabase() {
   try {
     const connection = await pool.getConnection();
-    console.log('Database connection successful');
+    console.log('Successfully connected to MySQL database at', config.mysql.host);
     connection.release();
+    return true;
   } catch (error) {
-    console.error('Database connection failed:', error);
+    console.error('Failed to connect to MySQL database:', error);
     throw error;
   }
 }
 
-// Export the pool as default and the query function
 export default pool;

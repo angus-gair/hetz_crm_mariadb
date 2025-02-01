@@ -14,6 +14,9 @@ export const config = {
 
 // Validate required environment variables
 export function validateConfig() {
-  // For MySQL credentials we're using hardcoded values
+  const { host, user, password, database } = config.mysql;
+  if (!host || !user || !password || !database) {
+    throw new Error('Missing required MySQL configuration');
+  }
   return true;
 }
