@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Menu, X, Phone } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config";
 
@@ -68,14 +68,8 @@ export function Navbar() {
             </a>
           </div>
 
-          {/* Phone number - Always visible */}
-          <a href="tel:1300123456" className="hidden md:flex items-center space-x-2 text-primary">
-            <Phone className="h-4 w-4" />
-            <span className="font-medium">1300 123 456</span>
-          </a>
-
           {/* Desktop menu */}
-          <div className="hidden md:flex md:items-center md:space-x-8">
+          <div className="hidden md:flex md:items-center md:space-x-4">
             {navigation.map((item) => (
               <a
                 key={item.name}
@@ -92,15 +86,16 @@ export function Navbar() {
                 {item.name}
               </a>
             ))}
+            <a
+              href="tel:0468333745"
+              className="px-3 py-2 text-sm font-medium rounded-md transition-colors bg-black text-white hover:bg-gray-900"
+            >
+              0468 333 745
+            </a>
           </div>
 
           {/* Mobile menu button */}
-          <div className="flex items-center space-x-4 md:hidden">
-            {/* Phone number on mobile */}
-            <a href="tel:1300123456" className="flex items-center space-x-2 text-primary">
-              <Phone className="h-4 w-4" />
-              <span className="font-medium">1300 123 456</span>
-            </a>
+          <div className="flex md:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
@@ -136,6 +131,12 @@ export function Navbar() {
                 {item.name}
               </a>
             ))}
+            <a
+              href="tel:0468333745"
+              className="block rounded-md px-3 py-2 text-base font-medium bg-black text-white hover:bg-gray-900"
+            >
+              0468 333 745
+            </a>
           </div>
         </div>
       )}
