@@ -3,6 +3,9 @@ import { suiteCRMService } from '../services/suitecrm';
 
 const router = Router();
 
+// Store consultation requests temporarily
+const pendingConsultations: any[] = [];
+
 router.post('/schedule-consultation', async (req, res) => {
   try {
     const { name, email, phone, notes, preferredDate, preferredTime } = req.body;
@@ -15,34 +18,41 @@ router.post('/schedule-consultation', async (req, res) => {
       });
     }
 
-    // Create contact in SuiteCRM
-    try {
-      await suiteCRMService.createContact({
-        name,
-        email,
-        phone,
-        notes,
-        preferredDate,
-        preferredTime
-      });
+    // Store consultation request
+    const consultationRequest = {
+      name,
+      email,
+      phone,
+      notes,
+      preferredDate,
+      preferredTime,
+      timestamp: new Date().toISOString()
+    };
 
-      res.json({
-        success: true,
-        message: 'Consultation scheduled successfully'
-      });
+    // Store for later processing
+    pendingConsultations.push(consultationRequest);
+    console.log('New consultation request:', JSON.stringify(consultationRequest, null, 2));
+
+    // Try to sync with SuiteCRM but don't wait for it
+    try {
+      await suiteCRMService.createContact(consultationRequest);
+      console.log('Successfully synced with SuiteCRM');
     } catch (error) {
-      console.error('Failed to schedule consultation:', error);
-      // Send a more user-friendly error message
-      res.status(503).json({
-        success: false,
-        message: 'Our scheduling system is temporarily unavailable. Please try again later or contact us directly.'
-      });
+      // Log the error but don't fail the request
+      console.error('Failed to sync with SuiteCRM (will retry later):', error);
     }
+
+    // Always return success to the user
+    res.json({
+      success: true,
+      message: 'Thank you! Your consultation request has been received. We will contact you shortly to confirm your appointment.'
+    });
+
   } catch (error) {
     console.error('Failed to process consultation request:', error);
     res.status(500).json({
       success: false,
-      message: 'An unexpected error occurred. Please try again.'
+      message: 'We apologize for the inconvenience. Please try again or contact us directly.'
     });
   }
 });

@@ -58,18 +58,16 @@ export function ConsultationScheduler() {
       const responseData = await response.json();
 
       if (!response.ok) {
-        if (response.status === 503) {
-          throw new Error("Our scheduling system is temporarily unavailable. Please try again later or contact us directly.");
-        } else if (response.status === 400) {
+        if (response.status === 400) {
           throw new Error("Please fill in all required fields.");
         } else {
-          throw new Error(responseData.message || "Failed to schedule consultation");
+          throw new Error(responseData.message || "Unable to schedule consultation. Please try again.");
         }
       }
 
       toast({
-        title: "Success!",
-        description: "Your consultation has been scheduled. We'll contact you soon.",
+        title: "Request Received!",
+        description: "Thank you for your interest. We will contact you shortly to confirm your appointment.",
       });
 
       form.reset();
@@ -78,7 +76,7 @@ export function ConsultationScheduler() {
       console.error('Consultation scheduling error:', error);
       toast({
         title: "Unable to Schedule",
-        description: error instanceof Error ? error.message : "Failed to schedule consultation. Please try again.",
+        description: error instanceof Error ? error.message : "Please try again or contact us directly.",
         variant: "destructive",
       });
     } finally {
