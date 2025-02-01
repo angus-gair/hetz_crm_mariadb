@@ -17,7 +17,9 @@ export class SuiteCRMService {
   private sessionId: string | null = null;
 
   constructor() {
-    this.baseUrl = process.env.SUITECRM_URL || 'http://4.236.188.48';
+    const baseUrl = process.env.SUITECRM_URL || 'http://4.236.188.48';
+    // Ensure URL has proper protocol
+    this.baseUrl = baseUrl.startsWith('http') ? baseUrl : `http://${baseUrl}`;
     this.username = process.env.SUITECRM_USERNAME || 'admin';
     this.password = process.env.SUITECRM_PASSWORD || 'Jamfinnarc1776!';
   }
@@ -56,6 +58,7 @@ export class SuiteCRMService {
       }
 
       this.sessionId = response.data.id;
+      console.log('Successfully logged into SuiteCRM');
       return this.sessionId;
     } catch (error) {
       console.error('SuiteCRM login failed:', error);
@@ -86,6 +89,7 @@ export class SuiteCRMService {
         }
       };
 
+      console.log('Attempting to create contact in SuiteCRM');
       const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, contactPayload, {
         headers: {
           'Content-Type': 'application/json',
@@ -93,6 +97,7 @@ export class SuiteCRMService {
         }
       });
 
+      console.log('Successfully created contact in SuiteCRM');
       return {
         success: true,
         message: 'Contact created successfully in SuiteCRM'
