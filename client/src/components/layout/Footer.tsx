@@ -1,9 +1,23 @@
 import { siteConfig } from "@/config";
-import { Link } from "wouter";
 
 export function Footer() {
   const { name, contact, social } = siteConfig;
   const currentYear = new Date().getFullYear();
+
+  const scrollToSection = (href: string) => {
+    const sectionId = href.replace('#', '');
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const navHeight = 64; // Height of the navbar
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - navHeight;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   return (
     <footer className="w-full py-6 bg-gray-50">
@@ -15,25 +29,53 @@ export function Footer() {
               Creating exceptional spaces that inspire and delight.
             </p>
           </div>
-          
+
           <div className="space-y-3">
             <h3 className="text-lg font-semibold">Quick Links</h3>
             <nav className="flex flex-col space-y-2">
-              <Link href="/" className="text-sm text-gray-500 hover:text-primary">
+              <a 
+                href="#home"
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToSection('#home');
+                }}
+                className="text-sm text-gray-500 hover:text-primary"
+              >
                 Home
-              </Link>
-              <Link href="/about" className="text-sm text-gray-500 hover:text-primary">
+              </a>
+              <a 
+                href="#about"
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToSection('#about');
+                }}
+                className="text-sm text-gray-500 hover:text-primary"
+              >
                 About Us
-              </Link>
-              <Link href="/portfolio" className="text-sm text-gray-500 hover:text-primary">
+              </a>
+              <a 
+                href="#portfolio"
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToSection('#portfolio');
+                }}
+                className="text-sm text-gray-500 hover:text-primary"
+              >
                 Portfolio
-              </Link>
-              <Link href="/contact" className="text-sm text-gray-500 hover:text-primary">
+              </a>
+              <a 
+                href="#consultation"
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToSection('#consultation');
+                }}
+                className="text-sm text-gray-500 hover:text-primary"
+              >
                 Contact
-              </Link>
+              </a>
             </nav>
           </div>
-          
+
           <div className="space-y-3">
             <h3 className="text-lg font-semibold">Contact Us</h3>
             <div className="space-y-2">
@@ -41,7 +83,7 @@ export function Footer() {
               <p className="text-sm text-gray-500">{contact.phone}</p>
             </div>
           </div>
-          
+
           <div className="space-y-3">
             <h3 className="text-lg font-semibold">Follow Us</h3>
             <div className="flex space-x-4">
@@ -61,7 +103,7 @@ export function Footer() {
             </div>
           </div>
         </div>
-        
+
         <div className="mt-8 pt-6 border-t text-center text-sm text-gray-500">
           <p>&copy; {currentYear} {name}. All rights reserved.</p>
         </div>

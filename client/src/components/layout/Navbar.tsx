@@ -21,7 +21,10 @@ export function Navbar() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
+            const sectionId = entry.target.id;
+            setActiveSection(sectionId);
+            // Update URL hash without scrolling
+            history.replaceState(null, '', `#${sectionId}`);
           }
         });
       },
@@ -37,9 +40,17 @@ export function Navbar() {
   }, []);
 
   const scrollToSection = (href: string) => {
-    const element = document.querySelector(href);
+    const sectionId = href.replace('#', '');
+    const element = document.getElementById(sectionId);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      const navHeight = 64; // Height of the navbar
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - navHeight;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
     }
     setIsOpen(false);
   };
@@ -49,10 +60,14 @@ export function Navbar() {
       <div className="container px-4 md:px-6">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <a href="#home" className="flex items-center space-x-2" onClick={(e) => {
-              e.preventDefault();
-              scrollToSection('#home');
-            }}>
+            <a
+              href="#home"
+              className="flex items-center space-x-2"
+              onClick={(e) => {
+                e.preventDefault();
+                scrollToSection('#home');
+              }}
+            >
               <span className="text-xl font-bold">{siteConfig.name}</span>
             </a>
           </div>
