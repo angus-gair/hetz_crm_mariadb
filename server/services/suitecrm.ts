@@ -17,8 +17,8 @@ export class SuiteCRMService {
 
   constructor() {
     const url = process.env.SUITECRM_URL || '';
-    // Ensure URL has protocol
-    this.baseUrl = url.startsWith('http') ? url : `https://${url}`;
+    // Keep the original protocol if present, otherwise default to http
+    this.baseUrl = url.startsWith('http') ? url : `http://${url}`;
     this.username = process.env.SUITECRM_USERNAME || '';
     this.password = process.env.SUITECRM_PASSWORD || '';
   }
@@ -28,6 +28,8 @@ export class SuiteCRMService {
       if (!this.baseUrl || !this.username || !this.password) {
         throw new Error('SuiteCRM credentials are not properly configured');
       }
+
+      console.log('Attempting to connect to SuiteCRM at:', this.baseUrl);
 
       const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, {
         method: 'login',
