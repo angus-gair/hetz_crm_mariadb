@@ -32,15 +32,13 @@ export async function initDatabase() {
 
     // Check for recent consultation records
     const checkRecords = async () => {
+      // Query using SuiteCRM's actual schema
       const sql = `
-        SELECT * FROM contacts 
-        WHERE date_entered >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
-        ORDER BY date_entered DESC 
-        LIMIT 5;
+        DESCRIBE contacts;
       `;
       try {
         const records = await query(sql);
-        console.log('Recent consultation records:', JSON.stringify(records, null, 2));
+        console.log('Contacts table structure:', JSON.stringify(records, null, 2));
       } catch (err) {
         console.error('Error checking consultation records:', err);
       }

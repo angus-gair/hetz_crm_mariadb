@@ -72,6 +72,12 @@ export class SuiteCRMService {
         await this.login();
       }
 
+      const [firstName, ...lastNameParts] = contactData.name.split(' ');
+      const lastName = lastNameParts.join(' ') || '-';
+
+      console.log('Attempting to create contact in SuiteCRM');
+
+      // Create contact
       const contactPayload = {
         method: 'set_entry',
         input_type: 'JSON',
@@ -80,27 +86,80 @@ export class SuiteCRMService {
           session: this.sessionId,
           module_name: 'Contacts',
           name_value_list: [
-            { name: 'first_name', value: contactData.name.split(' ')[0] },
-            { name: 'last_name', value: contactData.name.split(' ')[1] || '' },
-            { name: 'email1', value: contactData.email },
-            { name: 'phone_mobile', value: contactData.phone },
-            { name: 'description', value: `Notes: ${contactData.notes || ''}\nPreferred Date: ${contactData.preferredDate || ''}\nPreferred Time: ${contactData.preferredTime || ''}` }
+            { name: 'first_name', value: firstName },
+            { name: 'last_name', value: lastName },
+            { name: 'email', value: contactData.email },
+            { name: 'phone', value: contactData.phone },
+            { name: 'description', value: contactData.notes || '' }
           ]
         }
       };
 
-      console.log('Attempting to create contact in SuiteCRM');
-      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, contactPayload, {
+      const contactResponse = await axios.post(`${this.baseUrl}/service/v4/rest.php`, contactPayload, {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
       });
 
-      console.log('Successfully created contact in SuiteCRM');
+      if (!contactResponse.data?.id) {
+        throw new Error('Failed to create contact');
+      }
+
+      // Create meeting if date is provided
+      if (contactData.preferredDate) {
+        const meetingPayload = {
+          method: 'set_entry',
+          input_type: 'JSON',
+          response_type: 'JSON',
+          rest_data: {
+            session: this.sessionId,
+            module_name: 'Meetings',
+            name_value_list: [
+              { name: 'name', value: `Consultation with ${contactData.name}` },
+              { name: 'date_start', value: `${contactData.preferredDate} ${contactData.preferredTime || '00:00:00'}` },
+              { name: 'duration_hours', value: '1' },
+              { name: 'status', value: 'Planned' },
+              { name: 'description', value: contactData.notes || '' }
+            ]
+          }
+        };
+
+        const meetingResponse = await axios.post(`${this.baseUrl}/service/v4/rest.php`, meetingPayload, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+
+        // Link contact to meeting
+        if (meetingResponse.data?.id) {
+          const relationshipPayload = {
+            method: 'set_relationship',
+            input_type: 'JSON',
+            response_type: 'JSON',
+            rest_data: {
+              session: this.sessionId,
+              module_name: 'Meetings',
+              module_id: meetingResponse.data.id,
+              link_field_name: 'contacts',
+              related_ids: [contactResponse.data.id]
+            }
+          };
+
+          await axios.post(`${this.baseUrl}/service/v4/rest.php`, relationshipPayload, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+        }
+      }
+
+      console.log('Successfully created contact and meeting in SuiteCRM');
       return {
         success: true,
-        message: 'Contact created successfully in SuiteCRM'
+        message: 'Contact and consultation details created successfully in SuiteCRM'
       };
     } catch (error) {
       console.error('Failed to create contact in SuiteCRM:', error);
