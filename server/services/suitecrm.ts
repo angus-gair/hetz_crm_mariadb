@@ -16,19 +16,14 @@ export class SuiteCRMService {
   private sessionId: string | null = null;
 
   constructor() {
-    const url = process.env.SUITECRM_URL || '';
-    // Keep the original protocol if present, otherwise default to http
-    this.baseUrl = url.startsWith('http') ? url : `http://${url}`;
-    this.username = process.env.SUITECRM_USERNAME || '';
-    this.password = process.env.SUITECRM_PASSWORD || '';
+    // Hardcoded credentials for development
+    this.baseUrl = 'http://4.236.188.48';
+    this.username = 'admin';
+    this.password = 'Jamfinnarc1776!';
   }
 
   private async login() {
     try {
-      if (!this.baseUrl || !this.username || !this.password) {
-        throw new Error('SuiteCRM credentials are not properly configured');
-      }
-
       console.log('Attempting to connect to SuiteCRM at:', this.baseUrl);
 
       const loginPayload = {
