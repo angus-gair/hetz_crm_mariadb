@@ -10,8 +10,10 @@ export function Navbar() {
   const navigation = [
     { name: "Home", href: "#home" },
     { name: "Portfolio", href: "#portfolio" },
+    { name: "Design Session", href: "#design" },
     { name: "About Us", href: "#about" },
-    { name: "Book a Consultation", href: "#consultation" },
+    { name: "Calculator", href: "#calculator" },
+    { name: "Book Consultation", href: "#consultation" },
   ];
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export function Navbar() {
           </div>
 
           {/* Desktop menu */}
-          <div className="hidden md:flex md:items-center md:space-x-8">
+          <div className="hidden md:flex md:items-center md:space-x-4">
             {navigation.map((item) => (
               <a
                 key={item.name}
@@ -65,12 +67,17 @@ export function Navbar() {
                   e.preventDefault();
                   scrollToSection(item.href);
                 }}
-                className={`text-sm font-medium transition-colors hover:text-primary
-                  ${activeSection === item.href.replace('#', '') ? 'text-primary' : 'text-muted-foreground'}`}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${activeSection === item.href.replace('#', '') 
+                    ? 'bg-gray-100 text-gray-900' 
+                    : 'text-gray-500 hover:bg-gray-50'}`}
               >
                 {item.name}
               </a>
             ))}
+            <Button size="sm" variant="default">
+              0468 333 745
+            </Button>
           </div>
 
           {/* Mobile menu button */}
@@ -104,13 +111,15 @@ export function Navbar() {
                 }}
                 className={`block rounded-md px-3 py-2 text-base font-medium
                   ${activeSection === item.href.replace('#', '')
-                    ? 'text-primary'
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-primary'
-                  }`}
+                    ? 'bg-gray-100 text-gray-900'
+                    : 'text-gray-500 hover:bg-gray-50'}`}
               >
                 {item.name}
               </a>
             ))}
+            <Button size="sm" variant="default" className="w-full mt-4">
+              0468 333 745
+            </Button>
           </div>
         </div>
       )}
