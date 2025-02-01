@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type FC, useState } from "react";
 import { sections } from "@/config";
 import { Card } from "@/components/ui/card";
 import Image from "@/components/ui/image";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 type StyleFilter = "all" | "style1" | "style2" | "style3" | "style4";
 
-export function GalleryGrid() {
+export const GalleryGrid: FC = () => {
   const { title, description, items } = sections.gallery;
   const [activeFilter, setActiveFilter] = useState<StyleFilter>("all");
 

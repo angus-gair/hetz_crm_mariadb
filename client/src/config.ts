@@ -19,6 +19,7 @@ export type SectionContent = {
     description: string
     icon?: string
     image?: string
+    style?: string
   }>
 }
 
@@ -49,17 +50,20 @@ export const sections: Record<string, SectionContent> = {
       {
         title: "Modern Design Project",
         description: "A contemporary approach to space utilization",
-        image: `${assetConfig.galleryPath}/placeholder.svg`
+        image: `${assetConfig.galleryPath}/placeholder.svg`,
+        style: "style1"
       },
       {
         title: "Renovation Excellence",
         description: "Complete home transformation project",
-        image: `${assetConfig.galleryPath}/placeholder.svg`
+        image: `${assetConfig.galleryPath}/placeholder.svg`,
+        style: "style2"
       },
       {
         title: "Custom Build",
         description: "Unique architectural design implementation",
-        image: `${assetConfig.galleryPath}/placeholder.svg`
+        image: `${assetConfig.galleryPath}/placeholder.svg`,
+        style: "style3"
       }
     ]
   },
