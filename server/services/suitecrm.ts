@@ -18,7 +18,6 @@ export class SuiteCRMService {
 
   constructor() {
     const baseUrl = process.env.SUITECRM_URL || 'http://4.236.188.48';
-    // Ensure URL has proper protocol
     this.baseUrl = baseUrl.startsWith('http') ? baseUrl : `http://${baseUrl}`;
     this.username = process.env.SUITECRM_USERNAME || 'admin';
     this.password = process.env.SUITECRM_PASSWORD || 'Jamfinnarc1776!';
@@ -48,9 +47,8 @@ export class SuiteCRMService {
         }
       });
 
-      // Enhanced error handling for HTML responses
       if (typeof response.data === 'string' && response.data.includes('Fatal error')) {
-        throw new Error('SuiteCRM server error: The server is not properly configured. Please contact system administrator.');
+        throw new Error('SuiteCRM server error: The server is not properly configured.');
       }
 
       if (!response.data?.id) {
@@ -62,7 +60,7 @@ export class SuiteCRMService {
       return this.sessionId;
     } catch (error) {
       console.error('SuiteCRM login failed:', error);
-      throw new Error('Failed to authenticate with SuiteCRM. The service may be temporarily unavailable.');
+      throw new Error('Failed to authenticate with SuiteCRM.');
     }
   }
 
@@ -75,9 +73,9 @@ export class SuiteCRMService {
       const [firstName, ...lastNameParts] = contactData.name.split(' ');
       const lastName = lastNameParts.join(' ') || '-';
 
-      console.log('Attempting to create contact in SuiteCRM');
+      console.log('Creating contact in SuiteCRM:', { firstName, lastName, email: contactData.email });
 
-      // Create contact
+      // Create contact first
       const contactPayload = {
         method: 'set_entry',
         input_type: 'JSON',
@@ -88,9 +86,9 @@ export class SuiteCRMService {
           name_value_list: [
             { name: 'first_name', value: firstName },
             { name: 'last_name', value: lastName },
-            { name: 'email', value: contactData.email },
-            { name: 'phone', value: contactData.phone },
-            { name: 'description', value: contactData.notes || '' }
+            { name: 'phone_work', value: contactData.phone },
+            { name: 'description', value: contactData.notes || '' },
+            { name: 'lead_source', value: 'Web Site' }
           ]
         }
       };
@@ -105,6 +103,30 @@ export class SuiteCRMService {
       if (!contactResponse.data?.id) {
         throw new Error('Failed to create contact');
       }
+
+      // Set email address for the contact
+      const emailPayload = {
+        method: 'set_entries',
+        input_type: 'JSON',
+        response_type: 'JSON',
+        rest_data: {
+          session: this.sessionId,
+          module_name: 'EmailAddresses',
+          name_value_lists: [[
+            { name: 'email_address', value: contactData.email },
+            { name: 'bean_id', value: contactResponse.data.id },
+            { name: 'bean_module', value: 'Contacts' },
+            { name: 'primary_address', value: '1' }
+          ]]
+        }
+      };
+
+      await axios.post(`${this.baseUrl}/service/v4/rest.php`, emailPayload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
 
       // Create meeting if date is provided
       if (contactData.preferredDate) {
@@ -163,7 +185,6 @@ export class SuiteCRMService {
       };
     } catch (error) {
       console.error('Failed to create contact in SuiteCRM:', error);
-      // Return a user-friendly response instead of throwing
       return {
         success: false,
         message: 'Contact saved locally. SuiteCRM sync will be retried automatically.'
