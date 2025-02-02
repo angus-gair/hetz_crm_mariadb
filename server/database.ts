@@ -24,6 +24,16 @@ export async function query<T>(sql: string, params?: any[]): Promise<T> {
   }
 }
 
+// Format date for MySQL
+function formatDate(isoDate: string): string {
+  return isoDate.split('T')[0];
+}
+
+// Format time for MySQL
+function formatTime(isoDate: string): string {
+  return isoDate.split('T')[1].split('.')[0];
+}
+
 // Save consultation data locally
 export async function saveConsultation(consultationData: {
   name: string;
@@ -40,13 +50,17 @@ export async function saveConsultation(consultationData: {
   `;
 
   try {
+    // Format the date and time properly for MySQL
+    const formattedDate = consultationData.preferredDate ? formatDate(consultationData.preferredDate) : null;
+    const formattedTime = consultationData.preferredTime || null;
+
     const result = await query<any>(sql, [
       consultationData.name,
       consultationData.email,
       consultationData.phone,
       consultationData.notes || null,
-      consultationData.preferredDate || null,
-      consultationData.preferredTime || null
+      formattedDate,
+      formattedTime
     ]);
 
     console.log('Consultation saved locally:', result);

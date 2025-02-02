@@ -43,7 +43,15 @@ export function ConsultationScheduler() {
     },
   });
 
+  const resetForm = () => {
+    form.reset();
+    setDate(undefined);
+    setIsSubmitting(false);
+  };
+
   async function onSubmit(data: ConsultationData) {
+    if (isSubmitting) return; // Prevent double submission
+
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/schedule-consultation", {
@@ -66,8 +74,7 @@ export function ConsultationScheduler() {
         description: responseData.message || "Thank you for your interest. We will contact you shortly.",
       });
 
-      form.reset();
-      setDate(undefined);
+      resetForm();
     } catch (error) {
       console.error('Consultation scheduling error:', error);
       toast({
@@ -75,8 +82,7 @@ export function ConsultationScheduler() {
         description: error instanceof Error ? error.message : "Please try again or contact us directly.",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Reset submit state on error
     }
   }
 
@@ -230,9 +236,9 @@ export function ConsultationScheduler() {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full h-11 text-base" 
+              <Button
+                type="submit"
+                className="w-full h-11 text-base"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
