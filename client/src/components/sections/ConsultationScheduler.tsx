@@ -14,15 +14,30 @@ const timeSlots = [
   "13:00", "13:30", "14:00", "14:30", "15:00", "15:30"
 ];
 
+// Enhanced validation schema with detailed rules
 const consultationSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().min(1, "Phone number is required"),
-  notes: z.string().optional(),
+  name: z.string()
+    .min(2, "Name must be at least 2 characters")
+    .max(50, "Name must not exceed 50 characters")
+    .regex(/^[a-zA-Z\s]*$/, "Name can only contain letters and spaces"),
+  email: z.string()
+    .email("Please enter a valid email address")
+    .min(5, "Email must be at least 5 characters")
+    .max(100, "Email must not exceed 100 characters"),
+  phone: z.string()
+    .min(8, "Phone number must be at least 8 digits")
+    .max(15, "Phone number must not exceed 15 digits")
+    .regex(/^[0-9+\s-()]*$/, "Please enter a valid phone number"),
+  notes: z.string()
+    .max(500, "Notes must not exceed 500 characters")
+    .optional(),
   preferredDate: z.date({
     required_error: "Please select a date",
+    invalid_type_error: "Invalid date format",
   }),
-  preferredTime: z.string().min(1, "Please select a time slot"),
+  preferredTime: z.string({
+    required_error: "Please select a time slot",
+  }).min(1, "Please select a time slot"),
 });
 
 type ConsultationData = z.infer<typeof consultationSchema>;
@@ -41,6 +56,7 @@ export function ConsultationScheduler() {
       notes: "",
       preferredTime: "",
     },
+    mode: "onChange", // Enable real-time validation
   });
 
   const resetFormState = () => {
@@ -144,10 +160,10 @@ export function ConsultationScheduler() {
                         <div className="p-6 border rounded-md shadow-sm">
                           <Calendar
                             mode="single"
-                            selected={field.value}
+                            selected={date}
                             onSelect={(date) => {
-                              field.onChange(date);
                               setDate(date);
+                              field.onChange(date);
                             }}
                             disabled={(date) => {
                               const day = date.getDay();
@@ -158,7 +174,7 @@ export function ConsultationScheduler() {
                             className="w-full [&_.rdp-months]:w-full [&_.rdp-month]:w-full [&_.rdp-table]:w-full"
                           />
                         </div>
-                        <FormMessage />
+                        <FormMessage className="mt-2 text-sm text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -196,7 +212,7 @@ export function ConsultationScheduler() {
                             ))}
                           </RadioGroup>
                         </div>
-                        <FormMessage />
+                        <FormMessage className="mt-2 text-sm text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -213,9 +229,16 @@ export function ConsultationScheduler() {
                       <FormItem>
                         <FormLabel className="text-sm font-medium">Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Your full name" {...field} />
+                          <Input 
+                            placeholder="Your full name" 
+                            {...field} 
+                            className={`${
+                              form.formState.errors.name ? 'border-red-500 focus:ring-red-500' : 
+                              field.value ? 'border-green-500 focus:ring-green-500' : ''
+                            }`}
+                          />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="mt-1 text-sm text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -227,9 +250,17 @@ export function ConsultationScheduler() {
                       <FormItem>
                         <FormLabel className="text-sm font-medium">Phone</FormLabel>
                         <FormControl>
-                          <Input type="tel" placeholder="Your phone number" {...field} />
+                          <Input 
+                            type="tel" 
+                            placeholder="Your phone number" 
+                            {...field}
+                            className={`${
+                              form.formState.errors.phone ? 'border-red-500 focus:ring-red-500' : 
+                              field.value ? 'border-green-500 focus:ring-green-500' : ''
+                            }`}
+                          />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="mt-1 text-sm text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -241,9 +272,17 @@ export function ConsultationScheduler() {
                       <FormItem>
                         <FormLabel className="text-sm font-medium">Email</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="your@email.com" {...field} />
+                          <Input 
+                            type="email" 
+                            placeholder="your@email.com" 
+                            {...field}
+                            className={`${
+                              form.formState.errors.email ? 'border-red-500 focus:ring-red-500' : 
+                              field.value ? 'border-green-500 focus:ring-green-500' : ''
+                            }`}
+                          />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="mt-1 text-sm text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -255,9 +294,16 @@ export function ConsultationScheduler() {
                       <FormItem>
                         <FormLabel className="text-sm font-medium">Notes (Optional)</FormLabel>
                         <FormControl>
-                          <Input placeholder="Any special requirements or questions" {...field} />
+                          <Input 
+                            placeholder="Any special requirements or questions" 
+                            {...field}
+                            className={`${
+                              form.formState.errors.notes ? 'border-red-500 focus:ring-red-500' : 
+                              field.value ? 'border-green-500 focus:ring-green-500' : ''
+                            }`}
+                          />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="mt-1 text-sm text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -266,8 +312,10 @@ export function ConsultationScheduler() {
 
               <Button
                 type="submit"
-                className="w-full h-11 text-base"
-                disabled={isSubmitting}
+                className={`w-full h-11 text-base ${
+                  !form.formState.isValid ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                disabled={isSubmitting || !form.formState.isValid}
               >
                 {isSubmitting ? "Scheduling..." : "Schedule Consultation"}
               </Button>
