@@ -53,17 +53,26 @@ export function ConsultationScheduler() {
     if (isSubmitting) return;
 
     setIsSubmitting(true);
+    console.log('1. Form submitted with data:', {
+      ...data,
+      preferredDate: date?.toISOString(),
+    });
+
     try {
+      const payload = {
+        ...data,
+        preferredDate: date?.toISOString(),
+      };
+      console.log('2. Sending API request to /api/schedule-consultation:', payload);
+
       const response = await fetch("/api/schedule-consultation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...data,
-          preferredDate: date?.toISOString(),
-        }),
+        body: JSON.stringify(payload),
       });
 
       const responseData = await response.json();
+      console.log('3. Received API response:', responseData);
 
       if (!response.ok) {
         throw new Error(responseData.message || "Failed to schedule consultation");
@@ -76,7 +85,7 @@ export function ConsultationScheduler() {
 
       resetFormState();
     } catch (error) {
-      console.error('Consultation scheduling error:', error);
+      console.error('4. Consultation scheduling error:', error);
 
       toast({
         title: "Error",

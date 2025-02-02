@@ -43,6 +43,8 @@ export async function saveConsultation(consultationData: {
   preferredDate?: string;
   preferredTime?: string;
 }) {
+  console.log('1. Starting database save operation with data:', consultationData);
+
   const sql = `
     INSERT INTO consultations 
     (name, email, phone, notes, preferred_date, preferred_time)
@@ -54,6 +56,8 @@ export async function saveConsultation(consultationData: {
     const formattedDate = consultationData.preferredDate ? formatDate(consultationData.preferredDate) : null;
     const formattedTime = consultationData.preferredTime || null;
 
+    console.log('2. Formatted date and time for MySQL:', { formattedDate, formattedTime });
+
     const result = await query<any>(sql, [
       consultationData.name,
       consultationData.email,
@@ -63,10 +67,10 @@ export async function saveConsultation(consultationData: {
       formattedTime
     ]);
 
-    console.log('Consultation saved locally:', result);
+    console.log('3. MySQL insertion result:', result);
     return result.insertId;
   } catch (error) {
-    console.error('Error saving consultation locally:', error);
+    console.error('4. Error saving consultation to MySQL:', error);
     throw error;
   }
 }
