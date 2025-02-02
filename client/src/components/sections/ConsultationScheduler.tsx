@@ -108,12 +108,13 @@ export function ConsultationScheduler() {
         body: JSON.stringify(payload),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to schedule consultation");
+      }
+
       const responseData = await response.json();
       console.log('3. Received API response:', responseData);
-
-      if (!response.ok) {
-        throw new Error(responseData.message || "Failed to schedule consultation");
-      }
 
       toast({
         title: "Success!",
