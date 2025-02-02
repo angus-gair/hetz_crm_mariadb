@@ -43,14 +43,14 @@ export function ConsultationScheduler() {
     },
   });
 
-  const resetForm = () => {
+  const resetFormState = () => {
     form.reset();
     setDate(undefined);
     setIsSubmitting(false);
   };
 
   async function onSubmit(data: ConsultationData) {
-    if (isSubmitting) return; // Prevent double submission
+    if (isSubmitting) return;
 
     setIsSubmitting(true);
     try {
@@ -66,23 +66,25 @@ export function ConsultationScheduler() {
       const responseData = await response.json();
 
       if (!response.ok) {
-        throw new Error(responseData.message || "Failed to schedule consultation. Please try again.");
+        throw new Error(responseData.message || "Failed to schedule consultation");
       }
 
       toast({
-        title: "Request Received!",
-        description: responseData.message || "Thank you for your interest. We will contact you shortly.",
+        title: "Success!",
+        description: responseData.message || "Your consultation has been scheduled.",
       });
 
-      resetForm();
+      resetFormState();
     } catch (error) {
       console.error('Consultation scheduling error:', error);
+
       toast({
-        title: "Scheduling Failed",
-        description: error instanceof Error ? error.message : "Please try again or contact us directly.",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Please try again later",
         variant: "destructive",
       });
-      setIsSubmitting(false); // Reset submit state on error
+
+      setIsSubmitting(false);
     }
   }
 
@@ -101,9 +103,7 @@ export function ConsultationScheduler() {
         <div className="max-w-4xl mx-auto">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
-              {/* Calendar and Time Slots */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Calendar */}
                 <div>
                   <h3 className="text-lg font-semibold mb-6">Date & Time</h3>
                   <FormField
@@ -134,7 +134,6 @@ export function ConsultationScheduler() {
                   />
                 </div>
 
-                {/* Time Slots */}
                 <div>
                   <h3 className="text-lg font-semibold mb-6">Available Time Slots</h3>
                   <FormField
@@ -174,7 +173,6 @@ export function ConsultationScheduler() {
                 </div>
               </div>
 
-              {/* Your Information */}
               <div className="border rounded-md p-8 shadow-sm">
                 <h3 className="text-lg font-semibold mb-6">Your Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -241,14 +239,7 @@ export function ConsultationScheduler() {
                 className="w-full h-11 text-base"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? (
-                  <span className="flex items-center justify-center">
-                    <span className="mr-2">Scheduling...</span>
-                    {/* Add a loading spinner here if needed */}
-                  </span>
-                ) : (
-                  "Schedule Consultation"
-                )}
+                {isSubmitting ? "Scheduling..." : "Schedule Consultation"}
               </Button>
             </form>
           </Form>
