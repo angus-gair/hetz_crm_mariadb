@@ -58,16 +58,12 @@ export function ConsultationScheduler() {
       const responseData = await response.json();
 
       if (!response.ok) {
-        if (response.status === 400) {
-          throw new Error("Please fill in all required fields.");
-        } else {
-          throw new Error(responseData.message || "Unable to schedule consultation. Please try again.");
-        }
+        throw new Error(responseData.message || "Failed to schedule consultation. Please try again.");
       }
 
       toast({
         title: "Request Received!",
-        description: "Thank you for your interest. We will contact you shortly to confirm your appointment.",
+        description: responseData.message || "Thank you for your interest. We will contact you shortly.",
       });
 
       form.reset();
@@ -75,7 +71,7 @@ export function ConsultationScheduler() {
     } catch (error) {
       console.error('Consultation scheduling error:', error);
       toast({
-        title: "Unable to Schedule",
+        title: "Scheduling Failed",
         description: error instanceof Error ? error.message : "Please try again or contact us directly.",
         variant: "destructive",
       });
@@ -234,8 +230,19 @@ export function ConsultationScheduler() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-11 text-base" disabled={isSubmitting}>
-                {isSubmitting ? "Scheduling..." : "Schedule Consultation"}
+              <Button 
+                type="submit" 
+                className="w-full h-11 text-base" 
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center">
+                    <span className="mr-2">Scheduling...</span>
+                    {/* Add a loading spinner here if needed */}
+                  </span>
+                ) : (
+                  "Schedule Consultation"
+                )}
               </Button>
             </form>
           </Form>
