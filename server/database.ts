@@ -1,8 +1,5 @@
 import mysql from 'mysql2/promise';
 import { config } from './config';
-import pool from '../server/database';
-import { query } from '../server/database';
-import { User, QueryResult } from './schema';
 
 // Create the connection pool
 const pool = mysql.createPool({
@@ -27,35 +24,70 @@ export async function query<T>(sql: string, params?: any[]): Promise<T> {
   }
 }
 
-// Database operations
+// Save consultation data locally
+export async function saveConsultation(consultationData: {
+  name: string;
+  email: string;
+  phone: string;
+  notes?: string;
+  preferredDate?: string;
+  preferredTime?: string;
+}) {
+  const sql = `
+    INSERT INTO consultations 
+    (name, email, phone, notes, preferred_date, preferred_time)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  try {
+    const result = await query<any>(sql, [
+      consultationData.name,
+      consultationData.email,
+      consultationData.phone,
+      consultationData.notes || null,
+      consultationData.preferredDate || null,
+      consultationData.preferredTime || null
+    ]);
+
+    console.log('Consultation saved locally:', result);
+    return result.insertId;
+  } catch (error) {
+    console.error('Error saving consultation locally:', error);
+    throw error;
+  }
+}
+
+// Initialize database connection
 export async function initDatabase() {
   try {
     const connection = await pool.getConnection();
     console.log('Successfully connected to MySQL database at', config.mysql.host);
 
+    // Create consultations table if it doesn't exist
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS consultations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        phone VARCHAR(50) NOT NULL,
+        notes TEXT,
+        preferred_date DATE,
+        preferred_time TIME,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        synced BOOLEAN DEFAULT FALSE,
+        sync_attempts INT DEFAULT 0
+      );
+    `;
+
+    await query(createTableSQL);
+    console.log('Consultations table verified/created');
+
     // Check for recent consultation records
     const checkRecords = async () => {
-      // Query using SuiteCRM's actual schema
       const sql = `
-        SELECT 
-          c.id,
-          c.date_entered,
-          c.first_name,
-          c.last_name,
-          ea.email_address,
-          c.phone_work,
-          c.phone_mobile,
-          c.description,
-          m.name as meeting_name,
-          m.date_start as meeting_date
-        FROM contacts c
-        LEFT JOIN email_addr_bean_rel ear ON c.id = ear.bean_id AND ear.bean_module = 'Contacts' AND ear.deleted = 0
-        LEFT JOIN email_addresses ea ON ea.id = ear.email_address_id
-        LEFT JOIN meetings_contacts mc ON c.id = mc.contact_id AND mc.deleted = 0
-        LEFT JOIN meetings m ON m.id = mc.meeting_id AND m.deleted = 0
-        WHERE c.deleted = 0 
-        AND c.date_entered >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
-        ORDER BY c.date_entered DESC 
+        SELECT * FROM consultations 
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+        ORDER BY created_at DESC
         LIMIT 5;
       `;
       try {

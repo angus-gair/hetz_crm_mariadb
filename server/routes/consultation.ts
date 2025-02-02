@@ -1,10 +1,8 @@
 import { Router } from 'express';
 import { suiteCRMService } from '../services/suitecrm';
+import { saveConsultation } from '../database';
 
 const router = Router();
-
-// Store consultation requests temporarily
-const pendingConsultations: any[] = [];
 
 router.post('/schedule-consultation', async (req, res) => {
   try {
@@ -18,27 +16,22 @@ router.post('/schedule-consultation', async (req, res) => {
       });
     }
 
-    // Store consultation request
-    const consultationRequest = {
+    // Store consultation data locally first
+    const consultationData = {
       name,
       email,
       phone,
       notes,
       preferredDate,
-      preferredTime,
-      timestamp: new Date().toISOString(),
-      synced: false
+      preferredTime
     };
 
-    // Store locally first
-    pendingConsultations.push(consultationRequest);
-    console.log('New consultation request:', JSON.stringify(consultationRequest, null, 2));
+    // Save to local MySQL database
+    const localId = await saveConsultation(consultationData);
+    console.log('Consultation saved locally with ID:', localId);
 
     // Try to sync with SuiteCRM
-    const crmResult = await suiteCRMService.createContact(consultationRequest);
-
-    // Update sync status
-    consultationRequest.synced = crmResult.success;
+    const crmResult = await suiteCRMService.createContact(consultationData);
 
     // Return success response with appropriate message
     res.json({
