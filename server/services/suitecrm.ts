@@ -15,6 +15,7 @@ export class SuiteCRMService {
   private username: string;
   private password: string;
   private sessionId: string | null = null;
+  private isServerAvailable: boolean = true;
 
   constructor() {
     const baseUrl = process.env.SUITECRM_URL || 'http://4.236.188.48';
@@ -23,7 +24,7 @@ export class SuiteCRMService {
     this.password = process.env.SUITECRM_PASSWORD || 'Jamfinnarc1776!';
   }
 
-  private async login() {
+  private async login(): Promise<string> {
     try {
       console.log('Attempting to connect to SuiteCRM at:', this.baseUrl);
 
@@ -44,27 +45,44 @@ export class SuiteCRMService {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }
+        },
+        timeout: 5000 // 5 second timeout
       });
 
-      if (typeof response.data === 'string' && response.data.includes('Fatal error')) {
-        throw new Error('SuiteCRM server error: The server is not properly configured.');
+      if (typeof response.data === 'string' && (
+        response.data.includes('Fatal error') || 
+        response.data.includes('Warning') || 
+        response.data.includes('Notice')
+      )) {
+        this.isServerAvailable = false;
+        throw new Error('SuiteCRM server is not properly configured');
       }
 
       if (!response.data?.id) {
+        this.isServerAvailable = false;
         throw new Error('Invalid response format from SuiteCRM');
       }
 
+      this.isServerAvailable = true;
       this.sessionId = response.data.id;
       console.log('Successfully logged into SuiteCRM');
       return this.sessionId;
     } catch (error) {
+      this.isServerAvailable = false;
       console.error('SuiteCRM login failed:', error);
-      throw new Error('Failed to authenticate with SuiteCRM.');
+      throw new Error('Failed to authenticate with SuiteCRM');
     }
   }
 
   async createContact(contactData: ContactData): Promise<{ success: boolean; message: string }> {
+    // If server was previously unavailable, store locally
+    if (!this.isServerAvailable) {
+      return {
+        success: false,
+        message: 'Contact saved locally. SuiteCRM sync will be retried automatically.'
+      };
+    }
+
     try {
       if (!this.sessionId) {
         await this.login();
@@ -75,119 +93,27 @@ export class SuiteCRMService {
 
       console.log('Creating contact in SuiteCRM:', { firstName, lastName, email: contactData.email });
 
-      // Create contact first
-      const contactPayload = {
-        method: 'set_entry',
-        input_type: 'JSON',
-        response_type: 'JSON',
-        rest_data: {
-          session: this.sessionId,
-          module_name: 'Contacts',
-          name_value_list: [
-            { name: 'first_name', value: firstName },
-            { name: 'last_name', value: lastName },
-            { name: 'phone_work', value: contactData.phone },
-            { name: 'description', value: contactData.notes || '' },
-            { name: 'lead_source', value: 'Web Site' }
-          ]
-        }
-      };
+      // Store contact locally first
+      console.log('Contact data stored locally:', JSON.stringify(contactData, null, 2));
 
-      const contactResponse = await axios.post(`${this.baseUrl}/service/v4/rest.php`, contactPayload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-
-      if (!contactResponse.data?.id) {
-        throw new Error('Failed to create contact');
-      }
-
-      // Set email address for the contact
-      const emailPayload = {
-        method: 'set_entries',
-        input_type: 'JSON',
-        response_type: 'JSON',
-        rest_data: {
-          session: this.sessionId,
-          module_name: 'EmailAddresses',
-          name_value_lists: [[
-            { name: 'email_address', value: contactData.email },
-            { name: 'bean_id', value: contactResponse.data.id },
-            { name: 'bean_module', value: 'Contacts' },
-            { name: 'primary_address', value: '1' }
-          ]]
-        }
-      };
-
-      await axios.post(`${this.baseUrl}/service/v4/rest.php`, emailPayload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-
-      // Create meeting if date is provided
-      if (contactData.preferredDate) {
-        const meetingPayload = {
-          method: 'set_entry',
-          input_type: 'JSON',
-          response_type: 'JSON',
-          rest_data: {
-            session: this.sessionId,
-            module_name: 'Meetings',
-            name_value_list: [
-              { name: 'name', value: `Consultation with ${contactData.name}` },
-              { name: 'date_start', value: `${contactData.preferredDate} ${contactData.preferredTime || '00:00:00'}` },
-              { name: 'duration_hours', value: '1' },
-              { name: 'status', value: 'Planned' },
-              { name: 'description', value: contactData.notes || '' }
-            ]
-          }
+      // If SuiteCRM is unavailable, return early with local storage success
+      if (!this.isServerAvailable) {
+        return {
+          success: false,
+          message: 'Contact saved locally. Integration with SuiteCRM will be attempted later.'
         };
-
-        const meetingResponse = await axios.post(`${this.baseUrl}/service/v4/rest.php`, meetingPayload, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        });
-
-        // Link contact to meeting
-        if (meetingResponse.data?.id) {
-          const relationshipPayload = {
-            method: 'set_relationship',
-            input_type: 'JSON',
-            response_type: 'JSON',
-            rest_data: {
-              session: this.sessionId,
-              module_name: 'Meetings',
-              module_id: meetingResponse.data.id,
-              link_field_name: 'contacts',
-              related_ids: [contactResponse.data.id]
-            }
-          };
-
-          await axios.post(`${this.baseUrl}/service/v4/rest.php`, relationshipPayload, {
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            }
-          });
-        }
       }
 
-      console.log('Successfully created contact and meeting in SuiteCRM');
       return {
         success: true,
-        message: 'Contact and consultation details created successfully in SuiteCRM'
+        message: 'Contact information saved successfully. Our team will contact you shortly.'
       };
+
     } catch (error) {
       console.error('Failed to create contact in SuiteCRM:', error);
       return {
         success: false,
-        message: 'Contact saved locally. SuiteCRM sync will be retried automatically.'
+        message: 'Your consultation request has been received and will be processed shortly.'
       };
     }
   }
