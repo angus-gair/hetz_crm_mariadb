@@ -2,51 +2,61 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
+import payload from 'payload';
 import consultationRoutes from "./routes/consultation";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Register consultation routes
-app.use('/api', consultationRoutes);
-
-// Serve static files from the public directory
-app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
-app.use('/gallery', express.static(path.join(process.cwd(), 'public', 'gallery')));
-app.use('/testimonials', express.static(path.join(process.cwd(), 'public', 'testimonials')));
-
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
+const start = async () => {
+  // Initialize Payload
+  await payload.init({
+    secret: process.env.PAYLOAD_SECRET || 'a-random-secret-key',
+    express: app,
+    onInit: async () => {
+      log('PayloadCMS initialized');
+    },
   });
 
-  next();
-});
+  // Register consultation routes
+  app.use('/api', consultationRoutes);
 
-(async () => {
+  // Serve static files from the public directory
+  app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
+  app.use('/gallery', express.static(path.join(process.cwd(), 'public', 'gallery')));
+  app.use('/testimonials', express.static(path.join(process.cwd(), 'public', 'testimonials')));
+
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const path = req.path;
+    let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  
+    const originalResJson = res.json;
+    res.json = function (bodyJson, ...args) {
+      capturedJsonResponse = bodyJson;
+      return originalResJson.apply(res, [bodyJson, ...args]);
+    };
+  
+    res.on("finish", () => {
+      const duration = Date.now() - start;
+      if (path.startsWith("/api")) {
+        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+        if (capturedJsonResponse) {
+          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        }
+  
+        if (logLine.length > 80) {
+          logLine = logLine.slice(0, 79) + "…";
+        }
+  
+        log(logLine);
+      }
+    });
+  
+    next();
+  });
+
   // Create server before registering routes
   const server = await registerRoutes(app);
 
@@ -58,9 +68,7 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Setup vite in development
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
@@ -68,9 +76,10 @@ app.use((req, res, next) => {
   }
 
   // ALWAYS serve the app on port 5000
-  // this serves both the API and the client
   const PORT = 5000;
   server.listen(PORT, "0.0.0.0", () => {
     log(`serving on port ${PORT}`);
   });
-})();
+};
+
+start();
