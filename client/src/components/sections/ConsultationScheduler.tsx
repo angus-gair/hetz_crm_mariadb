@@ -52,6 +52,27 @@ export function ConsultationScheduler() {
   async function onSubmit(data: ConsultationData) {
     if (isSubmitting) return;
 
+    // Validate date and time before submitting
+    if (!date) {
+      toast({
+        title: "Error",
+        description: "Please select a consultation date",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!data.preferredTime) {
+      toast({
+        title: "Error",
+        description: "Please select a preferred time",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     setIsSubmitting(true);
     console.log('1. Form submitted with data:', {
       ...data,
