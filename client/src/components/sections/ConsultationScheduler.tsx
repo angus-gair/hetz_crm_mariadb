@@ -14,7 +14,6 @@ const timeSlots = [
   "13:00", "13:30", "14:00", "14:30", "15:00", "15:30"
 ];
 
-// Enhanced validation schema with detailed rules
 const consultationSchema = z.object({
   name: z.string()
     .min(2, "Name must be at least 2 characters")
@@ -42,6 +41,13 @@ const consultationSchema = z.object({
 
 type ConsultationData = z.infer<typeof consultationSchema>;
 
+const RequiredLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex items-center gap-1">
+    {children}
+    <span className="text-red-500">*</span>
+  </div>
+);
+
 export function ConsultationScheduler() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,7 +62,7 @@ export function ConsultationScheduler() {
       notes: "",
       preferredTime: "",
     },
-    mode: "onChange", // Enable real-time validation
+    mode: "onChange",
   });
 
   const resetFormState = () => {
@@ -68,7 +74,6 @@ export function ConsultationScheduler() {
   async function onSubmit(data: ConsultationData) {
     if (isSubmitting) return;
 
-    // Validate date and time before submitting
     if (!date) {
       toast({
         title: "Error",
@@ -152,7 +157,9 @@ export function ConsultationScheduler() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <h3 className="text-lg font-semibold mb-6">Date & Time</h3>
+                  <h3 className="text-lg font-semibold mb-6">
+                    <RequiredLabel>Date & Time</RequiredLabel>
+                  </h3>
                   <FormField
                     control={form.control}
                     name="preferredDate"
@@ -182,7 +189,9 @@ export function ConsultationScheduler() {
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-6">Available Time Slots</h3>
+                  <h3 className="text-lg font-semibold mb-6">
+                    <RequiredLabel>Available Time Slots</RequiredLabel>
+                  </h3>
                   <FormField
                     control={form.control}
                     name="preferredTime"
@@ -228,7 +237,9 @@ export function ConsultationScheduler() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium">Name</FormLabel>
+                        <FormLabel className="text-sm font-medium">
+                          <RequiredLabel>Name</RequiredLabel>
+                        </FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Your full name" 
@@ -249,7 +260,9 @@ export function ConsultationScheduler() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium">Phone</FormLabel>
+                        <FormLabel className="text-sm font-medium">
+                          <RequiredLabel>Phone</RequiredLabel>
+                        </FormLabel>
                         <FormControl>
                           <Input 
                             type="tel" 
@@ -271,7 +284,9 @@ export function ConsultationScheduler() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium">Email</FormLabel>
+                        <FormLabel className="text-sm font-medium">
+                          <RequiredLabel>Email</RequiredLabel>
+                        </FormLabel>
                         <FormControl>
                           <Input 
                             type="email" 
@@ -313,12 +328,17 @@ export function ConsultationScheduler() {
 
               <Button
                 type="submit"
-                className={`w-full h-11 text-base ${
-                  !form.formState.isValid ? 'opacity-50 cursor-not-allowed' : ''
+                className={`w-full h-11 text-base bg-black hover:bg-gray-800 ${
+                  !form.formState.isValid || Object.keys(form.formState.dirtyFields).length === 0
+                    ? 'opacity-50 cursor-not-allowed'
+                    : ''
                 }`}
-                disabled={isSubmitting || !form.formState.isValid}
+                disabled={isSubmitting || !form.formState.isValid || Object.keys(form.formState.dirtyFields).length === 0}
               >
-                {isSubmitting ? "Scheduling..." : "Schedule Consultation"}
+                {isSubmitting ? "Scheduling..." : 
+                  !form.formState.isValid && Object.keys(form.formState.dirtyFields).length > 0 
+                    ? "Please Fill All Required Fields"
+                    : "Schedule Consultation"}
               </Button>
             </form>
           </Form>
