@@ -84,8 +84,9 @@ export class SuiteCRMService {
       if (response.data.includes('Fatal error') ||
           response.data.includes('Warning') ||
           response.data.includes('Notice')) {
-        console.error('SuiteCRM returned PHP error:', response.data);
-        throw new Error('SuiteCRM server returned PHP errors');
+        console.error('SuiteCRM server error:', response.data);
+        this.isServerAvailable = false; // Mark server as unavailable
+        throw new Error('SuiteCRM server is currently experiencing issues');
       }
 
       // Try to parse JSON if string
