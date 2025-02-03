@@ -10,6 +10,12 @@ interface ContactData {
   preferredTime?: string;
 }
 
+interface SuiteCRMResponse {
+  id: string;
+  name?: string;
+  error?: any;
+}
+
 export class SuiteCRMService {
   private baseUrl: string;
   private username: string;
@@ -46,7 +52,7 @@ export class SuiteCRMService {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        timeout: 5000 // 5 second timeout
+        timeout: 5000
       });
 
       if (typeof response.data === 'string' && (
@@ -64,9 +70,7 @@ export class SuiteCRMService {
       }
 
       this.isServerAvailable = true;
-      this.sessionId = response.data.id;
-      console.log('Successfully logged into SuiteCRM');
-      return this.sessionId;
+      return response.data.id;
     } catch (error) {
       this.isServerAvailable = false;
       console.error('SuiteCRM login failed:', error);
@@ -74,8 +78,73 @@ export class SuiteCRMService {
     }
   }
 
+  private async setSession(): Promise<void> {
+    if (!this.sessionId) {
+      this.sessionId = await this.login();
+    }
+  }
+
+  private async makeRequest(method: string, parameters: any): Promise<SuiteCRMResponse> {
+    await this.setSession();
+
+    const payload = {
+      method,
+      input_type: 'JSON',
+      response_type: 'JSON',
+      rest_data: {
+        session: this.sessionId,
+        ...parameters
+      }
+    };
+
+    const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+
+    return response.data;
+  }
+
+  private async findOrCreateAccount(name: string, email: string): Promise<string> {
+    try {
+      // Search for existing account by email
+      const searchResult = await this.makeRequest('get_entry_list', {
+        module_name: 'Accounts',
+        query: `accounts.email1 = '${email}'`,
+        order_by: '',
+        offset: 0,
+        select_fields: ['id', 'name'],
+        max_results: 1,
+        deleted: 0
+      });
+
+      if (searchResult.entry_list?.length > 0) {
+        return searchResult.entry_list[0].id;
+      }
+
+      // Create new account if not found
+      const [firstName, ...lastNameParts] = name.split(' ');
+      const lastName = lastNameParts.join(' ') || '-';
+
+      const newAccount = await this.makeRequest('set_entry', {
+        module_name: 'Accounts',
+        name_value_list: {
+          name: `${firstName} ${lastName}`,
+          email1: email,
+          account_type: 'Customer',
+        }
+      });
+
+      return newAccount.id;
+    } catch (error) {
+      console.error('Error in findOrCreateAccount:', error);
+      throw error;
+    }
+  }
+
   async createContact(contactData: ContactData): Promise<{ success: boolean; message: string }> {
-    // If server was previously unavailable, store locally
     if (!this.isServerAvailable) {
       return {
         success: false,
@@ -84,24 +153,46 @@ export class SuiteCRMService {
     }
 
     try {
-      if (!this.sessionId) {
-        await this.login();
-      }
-
       const [firstName, ...lastNameParts] = contactData.name.split(' ');
       const lastName = lastNameParts.join(' ') || '-';
 
-      console.log('Creating contact in SuiteCRM:', { firstName, lastName, email: contactData.email });
+      console.log('Creating records in SuiteCRM for:', contactData.email);
 
-      // Store contact locally first
-      console.log('Contact data stored locally:', JSON.stringify(contactData, null, 2));
+      // Create or find account first
+      const accountId = await this.findOrCreateAccount(contactData.name, contactData.email);
 
-      // If SuiteCRM is unavailable, return early with local storage success
-      if (!this.isServerAvailable) {
-        return {
-          success: false,
-          message: 'Contact saved locally. Integration with SuiteCRM will be attempted later.'
-        };
+      // Create contact
+      const contact = await this.makeRequest('set_entry', {
+        module_name: 'Contacts',
+        name_value_list: {
+          first_name: firstName,
+          last_name: lastName,
+          email1: contactData.email,
+          phone_mobile: contactData.phone,
+          account_id: accountId,
+          description: contactData.notes || ''
+        }
+      });
+
+      // Create meeting for consultation
+      if (contactData.preferredDate && contactData.preferredTime) {
+        const meetingDate = new Date(contactData.preferredDate);
+        const [hours, minutes] = contactData.preferredTime.split(':');
+        meetingDate.setHours(parseInt(hours), parseInt(minutes));
+
+        await this.makeRequest('set_entry', {
+          module_name: 'Meetings',
+          name_value_list: {
+            name: `Cubby House Consultation - ${contactData.name}`,
+            date_start: meetingDate.toISOString(),
+            duration_hours: '1',
+            duration_minutes: '0',
+            status: 'Planned',
+            description: contactData.notes || '',
+            parent_type: 'Contacts',
+            parent_id: contact.id
+          }
+        });
       }
 
       return {
@@ -110,7 +201,7 @@ export class SuiteCRMService {
       };
 
     } catch (error) {
-      console.error('Failed to create contact in SuiteCRM:', error);
+      console.error('Failed to create records in SuiteCRM:', error);
       return {
         success: false,
         message: 'Your consultation request has been received and will be processed shortly.'
