@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { suiteCRMService } from '../services/suitecrm';
 import { saveConsultation } from '../database';
+import { syncService } from '../services/syncService';
 
 const router = Router();
 
@@ -30,6 +31,10 @@ router.post('/schedule-consultation', async (req, res) => {
         preferredTime
       });
       console.log('4. Consultation saved locally with ID:', localId);
+
+      // Trigger sync process
+      await syncService.syncConsultationToCRM(localId);
+
     } catch (dbError) {
       console.error('Database error:', dbError);
       return res.status(500).json({
@@ -38,34 +43,12 @@ router.post('/schedule-consultation', async (req, res) => {
       });
     }
 
-    // Try to sync with SuiteCRM
-    try {
-      console.log('5. Attempting to sync with SuiteCRM');
-      const crmResult = await suiteCRMService.createContact({
-        name,
-        email,
-        phone,
-        notes,
-        preferredDate,
-        preferredTime
-      });
-      console.log('6. SuiteCRM sync result:', crmResult);
-
-      // Even if CRM sync fails, we still return success since we have local data
-      return res.json({
-        success: true,
-        message: crmResult.message || 'Thank you! Your consultation request has been received.',
-        localId
-      });
-    } catch (crmError) {
-      console.error('7. CRM sync error:', crmError);
-      // Still return success since we have local data
-      return res.json({
-        success: true,
-        message: 'Your consultation request has been received. Our team will contact you shortly.',
-        localId
-      });
-    }
+    // Return success even if sync is pending - it will be handled by the sync service
+    return res.json({
+      success: true,
+      message: 'Thank you! Your consultation request has been received.',
+      localId
+    });
 
   } catch (error) {
     console.error('8. Fatal error in consultation request:', error);
