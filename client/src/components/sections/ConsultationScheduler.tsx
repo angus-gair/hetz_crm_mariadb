@@ -93,26 +93,24 @@ export function ConsultationScheduler() {
     }
 
     setIsSubmitting(true);
-    console.log('1. Form submitted with data:', {
-      ...data,
-      preferredDate: date?.toISOString(),
-    });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
-      const payload = {
-        ...data,
-        preferredDate: date?.toISOString(),
-      };
-      console.log('2. Sending API request to /api/schedule-consultation:', payload);
-
       const response = await fetch("/api/schedule-consultation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...data,
+          preferredDate: date?.toISOString(),
+        }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       const responseData = await response.json();
-      console.log('3. Received API response:', responseData);
 
       if (!response.ok) {
         throw new Error(responseData.message || "Failed to schedule consultation");
@@ -125,14 +123,23 @@ export function ConsultationScheduler() {
 
       resetFormState();
     } catch (error) {
-      console.error('4. Consultation scheduling error:', error);
+      console.error('Consultation scheduling error:', error);
 
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Please try again later",
-        variant: "destructive",
-      });
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast({
+          title: "Request Timeout",
+          description: "The request took too long. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Please try again later",
+          variant: "destructive",
+        });
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsSubmitting(false);
     }
   }

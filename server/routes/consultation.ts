@@ -19,9 +19,9 @@ router.post('/schedule-consultation', async (req, res) => {
     }
 
     console.log('3. Attempting to save consultation to local MySQL database');
-    // Store consultation data locally first
+    let localId;
     try {
-      const localId = await saveConsultation({
+      localId = await saveConsultation({
         name,
         email,
         phone,
@@ -30,8 +30,16 @@ router.post('/schedule-consultation', async (req, res) => {
         preferredTime
       });
       console.log('4. Consultation saved locally with ID:', localId);
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      return res.status(500).json({
+        success: false,
+        message: 'Unable to save your consultation. Please try again.'
+      });
+    }
 
-      // Try to sync with SuiteCRM
+    // Try to sync with SuiteCRM
+    try {
       console.log('5. Attempting to sync with SuiteCRM');
       const crmResult = await suiteCRMService.createContact({
         name,
@@ -43,23 +51,24 @@ router.post('/schedule-consultation', async (req, res) => {
       });
       console.log('6. SuiteCRM sync result:', crmResult);
 
-      // Return success response with appropriate message
+      // Even if CRM sync fails, we still return success since we have local data
       return res.json({
         success: true,
-        message: 'Thank you! Your consultation request has been received.',
+        message: crmResult.message || 'Thank you! Your consultation request has been received.',
         localId
       });
-
-    } catch (dbError) {
-      console.error('Database error:', dbError);
-      return res.status(500).json({
-        success: false,
-        message: 'Unable to process your request. Please try again.'
+    } catch (crmError) {
+      console.error('7. CRM sync error:', crmError);
+      // Still return success since we have local data
+      return res.json({
+        success: true,
+        message: 'Your consultation request has been received. Our team will contact you shortly.',
+        localId
       });
     }
 
   } catch (error) {
-    console.error('Failed to process consultation request:', error);
+    console.error('8. Fatal error in consultation request:', error);
     return res.status(500).json({
       success: false,
       message: 'We apologize for the inconvenience. Please try again or contact us directly.'
