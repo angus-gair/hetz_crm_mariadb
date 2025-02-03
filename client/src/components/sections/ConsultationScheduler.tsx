@@ -328,11 +328,7 @@ export function ConsultationScheduler() {
 
               <Button
                 type="submit"
-                className={`w-full h-11 text-base bg-black text-white hover:bg-gray-800 ${
-                  !form.formState.isValid || Object.keys(form.formState.dirtyFields).length === 0
-                    ? 'opacity-50 cursor-not-allowed'
-                    : ''
-                }`}
+                className="w-full h-11 text-base text-white bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isSubmitting || !form.formState.isValid || Object.keys(form.formState.dirtyFields).length === 0}
               >
                 {isSubmitting ? "Scheduling..." : 
