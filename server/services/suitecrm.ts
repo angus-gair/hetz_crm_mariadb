@@ -234,6 +234,40 @@ export class SuiteCRMService {
     }
   }
 
+  async getUpdatedContacts(since: string): Promise<any[]> {
+    if (!this.isServerAvailable) {
+      console.log('SuiteCRM is not available, returning empty list');
+      return [];
+    }
+
+    try {
+      const response = await this.makeRequest('get_entry_list', {
+        module_name: 'Contacts',
+        query: `contacts.date_modified > '${since}'`,
+        order_by: 'date_modified ASC',
+        select_fields: ['id', 'first_name', 'last_name', 'email1', 'phone_mobile', 'description']
+      });
+
+      if (!response.entry_list) {
+        return [];
+      }
+
+      return response.entry_list.map((entry: any) => {
+        const values = entry.name_value_list;
+        return {
+          id: entry.id,
+          name: `${values.first_name?.value || ''} ${values.last_name?.value || ''}`.trim(),
+          email: values.email1?.value || '',
+          phone: values.phone_mobile?.value || '',
+          notes: values.description?.value || ''
+        };
+      });
+    } catch (error) {
+      console.error('Failed to get updated contacts from SuiteCRM:', error);
+      return [];
+    }
+  }
+
   async createContact(contactData: ContactData): Promise<{ success: boolean; message: string }> {
     if (!this.isServerAvailable) {
       console.log('SuiteCRM is not available, storing locally only');
