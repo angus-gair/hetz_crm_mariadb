@@ -11,8 +11,16 @@ interface ContactData {
 }
 
 interface SuiteCRMResponse {
-  id: string;
-  name?: string;
+  id?: string;
+  entry_list?: Array<{
+    id: string;
+    name_value_list?: {
+      [key: string]: {
+        name: string;
+        value: string;
+      };
+    };
+  }>;
   error?: any;
 }
 
@@ -22,6 +30,7 @@ export class SuiteCRMService {
   private password: string;
   private sessionId: string | null = null;
   private isServerAvailable: boolean = true;
+  private readonly timeout: number = 15000; // Increased timeout to 15 seconds
 
   constructor() {
     const baseUrl = process.env.SUITECRM_URL || 'http://4.236.188.48';
@@ -52,64 +61,85 @@ export class SuiteCRMService {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        timeout: 5000
+        timeout: this.timeout
       });
 
+      // Check for PHP errors in response
       if (typeof response.data === 'string' && (
         response.data.includes('Fatal error') || 
         response.data.includes('Warning') || 
         response.data.includes('Notice')
       )) {
+        console.error('SuiteCRM returned PHP error:', response.data);
         this.isServerAvailable = false;
-        throw new Error('SuiteCRM server is not properly configured');
+        throw new Error('SuiteCRM server returned PHP errors');
       }
 
+      // Validate response format
       if (!response.data?.id) {
+        console.error('Invalid SuiteCRM response format:', response.data);
         this.isServerAvailable = false;
         throw new Error('Invalid response format from SuiteCRM');
       }
 
       this.isServerAvailable = true;
+      console.log('Successfully authenticated with SuiteCRM');
       return response.data.id;
     } catch (error) {
       this.isServerAvailable = false;
-      console.error('SuiteCRM login failed:', error);
+      if (axios.isAxiosError(error) && error.code === 'ECONNREFUSED') {
+        console.error('SuiteCRM server is not reachable:', error.message);
+      } else {
+        console.error('SuiteCRM login failed:', error);
+      }
       throw new Error('Failed to authenticate with SuiteCRM');
     }
   }
 
   private async setSession(): Promise<void> {
     if (!this.sessionId) {
-      this.sessionId = await this.login();
+      try {
+        this.sessionId = await this.login();
+      } catch (error) {
+        console.error('Failed to set SuiteCRM session:', error);
+        throw error;
+      }
     }
   }
 
   private async makeRequest(method: string, parameters: any): Promise<SuiteCRMResponse> {
-    await this.setSession();
+    try {
+      await this.setSession();
 
-    const payload = {
-      method,
-      input_type: 'JSON',
-      response_type: 'JSON',
-      rest_data: {
-        session: this.sessionId,
-        ...parameters
-      }
-    };
+      const payload = {
+        method,
+        input_type: 'JSON',
+        response_type: 'JSON',
+        rest_data: {
+          session: this.sessionId,
+          ...parameters
+        }
+      };
 
-    const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    });
+      console.log(`Making SuiteCRM request: ${method}`);
+      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: this.timeout
+      });
 
-    return response.data;
+      return response.data;
+    } catch (error) {
+      console.error(`SuiteCRM ${method} request failed:`, error);
+      throw error;
+    }
   }
 
   private async findOrCreateAccount(name: string, email: string): Promise<string> {
     try {
-      // Search for existing account by email
+      console.log('Searching for existing account:', email);
       const searchResult = await this.makeRequest('get_entry_list', {
         module_name: 'Accounts',
         query: `accounts.email1 = '${email}'`,
@@ -120,11 +150,12 @@ export class SuiteCRMService {
         deleted: 0
       });
 
-      if (searchResult.entry_list?.length > 0) {
+      if (searchResult.entry_list && searchResult.entry_list.length > 0) {
+        console.log('Found existing account:', searchResult.entry_list[0].id);
         return searchResult.entry_list[0].id;
       }
 
-      // Create new account if not found
+      console.log('Creating new account for:', name);
       const [firstName, ...lastNameParts] = name.split(' ');
       const lastName = lastNameParts.join(' ') || '-';
 
@@ -137,6 +168,11 @@ export class SuiteCRMService {
         }
       });
 
+      if (!newAccount.id) {
+        throw new Error('Failed to create account: No ID returned');
+      }
+
+      console.log('Created new account:', newAccount.id);
       return newAccount.id;
     } catch (error) {
       console.error('Error in findOrCreateAccount:', error);
@@ -146,6 +182,7 @@ export class SuiteCRMService {
 
   async createContact(contactData: ContactData): Promise<{ success: boolean; message: string }> {
     if (!this.isServerAvailable) {
+      console.log('SuiteCRM is not available, storing locally only');
       return {
         success: false,
         message: 'Contact saved locally. SuiteCRM sync will be retried automatically.'
@@ -162,6 +199,7 @@ export class SuiteCRMService {
       const accountId = await this.findOrCreateAccount(contactData.name, contactData.email);
 
       // Create contact
+      console.log('Creating contact record');
       const contact = await this.makeRequest('set_entry', {
         module_name: 'Contacts',
         name_value_list: {
@@ -174,8 +212,13 @@ export class SuiteCRMService {
         }
       });
 
+      if (!contact.id) {
+        throw new Error('Failed to create contact: No ID returned');
+      }
+
       // Create meeting for consultation
       if (contactData.preferredDate && contactData.preferredTime) {
+        console.log('Creating meeting record');
         const meetingDate = new Date(contactData.preferredDate);
         const [hours, minutes] = contactData.preferredTime.split(':');
         meetingDate.setHours(parseInt(hours), parseInt(minutes));
