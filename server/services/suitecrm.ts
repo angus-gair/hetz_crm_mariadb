@@ -30,17 +30,40 @@ export class SuiteCRMService {
   private password: string;
   private sessionId: string | null = null;
   private isServerAvailable: boolean = true;
-  private readonly timeout: number = 15000; // Increased timeout to 15 seconds
+  private readonly timeout: number = 15000; // 15 seconds timeout
+  private readonly maxRetries: number = 3;
 
   constructor() {
-    const baseUrl = process.env.SUITECRM_URL || 'http://4.236.188.48';
-    this.baseUrl = baseUrl.startsWith('http') ? baseUrl : `http://${baseUrl}`;
-    this.username = process.env.SUITECRM_USERNAME || 'admin';
-    this.password = process.env.SUITECRM_PASSWORD || 'Jamfinnarc1776!';
+    try {
+      // Get configuration from environment variables
+      const baseUrl = process.env.SUITECRM_URL;
+      this.username = process.env.SUITECRM_USERNAME || '';
+      this.password = process.env.SUITECRM_PASSWORD || '';
+
+      // Validate required configuration
+      if (!baseUrl || !this.username || !this.password) {
+        console.error('Missing required SuiteCRM configuration');
+        this.isServerAvailable = false;
+        return;
+      }
+
+      // Ensure baseUrl has proper protocol and validate URL format
+      this.baseUrl = baseUrl.startsWith('http') ? baseUrl : `http://${baseUrl}`;
+      new URL(this.baseUrl);
+
+      console.log('SuiteCRM service initialized with URL:', this.baseUrl);
+    } catch (error) {
+      console.error('Invalid SuiteCRM configuration:', error);
+      this.isServerAvailable = false;
+    }
   }
 
   private async login(): Promise<string> {
     try {
+      if (!this.isServerAvailable) {
+        throw new Error('SuiteCRM server is not properly configured');
+      }
+
       console.log('Attempting to connect to SuiteCRM at:', this.baseUrl);
 
       const loginPayload = {
@@ -61,7 +84,8 @@ export class SuiteCRMService {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        timeout: this.timeout
+        timeout: this.timeout,
+        validateStatus: (status) => status === 200 // Only accept 200 status
       });
 
       // Check for PHP errors in response
@@ -87,27 +111,44 @@ export class SuiteCRMService {
       return response.data.id;
     } catch (error) {
       this.isServerAvailable = false;
-      if (axios.isAxiosError(error) && error.code === 'ECONNREFUSED') {
-        console.error('SuiteCRM server is not reachable:', error.message);
-      } else {
-        console.error('SuiteCRM login failed:', error);
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ERR_INVALID_URL') {
+          console.error('Invalid SuiteCRM URL:', this.baseUrl);
+          throw new Error('Invalid SuiteCRM server URL configuration');
+        }
+        if (error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
+          console.error('SuiteCRM server is not reachable:', error.message);
+          throw new Error('SuiteCRM server is currently unavailable');
+        }
       }
+      console.error('SuiteCRM login failed:', error);
       throw new Error('Failed to authenticate with SuiteCRM');
     }
   }
 
-  private async setSession(): Promise<void> {
+  private async setSession(retryCount: number = 0): Promise<void> {
     if (!this.sessionId) {
       try {
         this.sessionId = await this.login();
       } catch (error) {
-        console.error('Failed to set SuiteCRM session:', error);
+        if (retryCount < this.maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, retryCount), 10000); // exponential backoff with max 10s
+          console.log(`Retrying login after ${delay}ms (attempt ${retryCount + 1}/${this.maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.setSession(retryCount + 1);
+        }
+        console.error('Max retry attempts reached for SuiteCRM login');
         throw error;
       }
     }
   }
 
-  private async makeRequest(method: string, parameters: any): Promise<SuiteCRMResponse> {
+  private async makeRequest(method: string, parameters: any, retryCount: number = 0): Promise<SuiteCRMResponse> {
+    if (!this.isServerAvailable && retryCount === 0) {
+      console.log('SuiteCRM server is marked as unavailable, skipping request');
+      return {};
+    }
+
     try {
       await this.setSession();
 
@@ -132,80 +173,13 @@ export class SuiteCRMService {
 
       return response.data;
     } catch (error) {
-      console.error(`SuiteCRM ${method} request failed:`, error);
-      throw error;
-    }
-  }
-
-  async getUpdatedContacts(lastSync: string): Promise<any[]> {
-    try {
-      console.log('Fetching updated contacts from CRM since:', lastSync);
-      const response = await this.makeRequest('get_entry_list', {
-        module_name: 'Contacts',
-        query: `contacts.date_modified > '${lastSync}'`,
-        order_by: 'date_modified DESC',
-        offset: 0,
-        select_fields: ['id', 'first_name', 'last_name', 'email1', 'phone_mobile', 'description'],
-        max_results: 100,
-        deleted: 0
-      });
-
-      if (!response.entry_list) {
-        return [];
+      if (retryCount < this.maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+        console.log(`Retrying request after ${delay}ms (attempt ${retryCount + 1}/${this.maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.makeRequest(method, parameters, retryCount + 1);
       }
-
-      return response.entry_list.map((entry: any) => ({
-        id: entry.id,
-        name: `${entry.name_value_list.first_name.value} ${entry.name_value_list.last_name.value}`,
-        email: entry.name_value_list.email1.value,
-        phone: entry.name_value_list.phone_mobile.value,
-        notes: entry.name_value_list.description.value
-      }));
-    } catch (error) {
-      console.error('Failed to fetch updated contacts:', error);
-      return [];
-    }
-  }
-
-  private async findOrCreateAccount(name: string, email: string): Promise<string> {
-    try {
-      console.log('Searching for existing account:', email);
-      const searchResult = await this.makeRequest('get_entry_list', {
-        module_name: 'Accounts',
-        query: `accounts.email1 = '${email}'`,
-        order_by: '',
-        offset: 0,
-        select_fields: ['id', 'name'],
-        max_results: 1,
-        deleted: 0
-      });
-
-      if (searchResult.entry_list && searchResult.entry_list.length > 0) {
-        console.log('Found existing account:', searchResult.entry_list[0].id);
-        return searchResult.entry_list[0].id;
-      }
-
-      console.log('Creating new account for:', name);
-      const [firstName, ...lastNameParts] = name.split(' ');
-      const lastName = lastNameParts.join(' ') || '-';
-
-      const newAccount = await this.makeRequest('set_entry', {
-        module_name: 'Accounts',
-        name_value_list: {
-          name: `${firstName} ${lastName}`,
-          email1: email,
-          account_type: 'Customer',
-        }
-      });
-
-      if (!newAccount.id) {
-        throw new Error('Failed to create account: No ID returned');
-      }
-
-      console.log('Created new account:', newAccount.id);
-      return newAccount.id;
-    } catch (error) {
-      console.error('Error in findOrCreateAccount:', error);
+      console.error(`SuiteCRM ${method} request failed after ${this.maxRetries} attempts:`, error);
       throw error;
     }
   }
@@ -225,10 +199,7 @@ export class SuiteCRMService {
 
       console.log('Creating records in SuiteCRM for:', contactData.email);
 
-      // Create or find account first
-      const accountId = await this.findOrCreateAccount(contactData.name, contactData.email);
-
-      // Create contact
+      // Create contact record
       console.log('Creating contact record');
       const contact = await this.makeRequest('set_entry', {
         module_name: 'Contacts',
@@ -237,7 +208,6 @@ export class SuiteCRMService {
           last_name: lastName,
           email1: contactData.email,
           phone_mobile: contactData.phone,
-          account_id: accountId,
           description: contactData.notes || ''
         }
       });
@@ -275,10 +245,47 @@ export class SuiteCRMService {
 
     } catch (error) {
       console.error('Failed to create records in SuiteCRM:', error);
+      this.isServerAvailable = false;
       return {
         success: false,
         message: 'Your consultation request has been received and will be processed shortly.'
       };
+    }
+  }
+
+  async getUpdatedContacts(lastSync: string): Promise<any[]> {
+    if (!this.isServerAvailable) {
+      console.log('SuiteCRM is not available, skipping sync');
+      return [];
+    }
+
+    try {
+      console.log('Fetching updated contacts from CRM since:', lastSync);
+      const response = await this.makeRequest('get_entry_list', {
+        module_name: 'Contacts',
+        query: `contacts.date_modified > '${lastSync}'`,
+        order_by: 'date_modified DESC',
+        offset: 0,
+        select_fields: ['id', 'first_name', 'last_name', 'email1', 'phone_mobile', 'description'],
+        max_results: 100,
+        deleted: 0
+      });
+
+      if (!response.entry_list) {
+        return [];
+      }
+
+      return response.entry_list.map((entry: any) => ({
+        id: entry.id,
+        name: `${entry.name_value_list.first_name.value} ${entry.name_value_list.last_name.value}`,
+        email: entry.name_value_list.email1.value,
+        phone: entry.name_value_list.phone_mobile.value,
+        notes: entry.name_value_list.description.value
+      }));
+    } catch (error) {
+      console.error('Failed to fetch updated contacts:', error);
+      this.isServerAvailable = false;
+      return [];
     }
   }
 }
