@@ -137,6 +137,36 @@ export class SuiteCRMService {
     }
   }
 
+  async getUpdatedContacts(lastSync: string): Promise<any[]> {
+    try {
+      console.log('Fetching updated contacts from CRM since:', lastSync);
+      const response = await this.makeRequest('get_entry_list', {
+        module_name: 'Contacts',
+        query: `contacts.date_modified > '${lastSync}'`,
+        order_by: 'date_modified DESC',
+        offset: 0,
+        select_fields: ['id', 'first_name', 'last_name', 'email1', 'phone_mobile', 'description'],
+        max_results: 100,
+        deleted: 0
+      });
+
+      if (!response.entry_list) {
+        return [];
+      }
+
+      return response.entry_list.map((entry: any) => ({
+        id: entry.id,
+        name: `${entry.name_value_list.first_name.value} ${entry.name_value_list.last_name.value}`,
+        email: entry.name_value_list.email1.value,
+        phone: entry.name_value_list.phone_mobile.value,
+        notes: entry.name_value_list.description.value
+      }));
+    } catch (error) {
+      console.error('Failed to fetch updated contacts:', error);
+      return [];
+    }
+  }
+
   private async findOrCreateAccount(name: string, email: string): Promise<string> {
     try {
       console.log('Searching for existing account:', email);
