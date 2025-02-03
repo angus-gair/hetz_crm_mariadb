@@ -9,27 +9,27 @@ import { ConnectWithUs } from "@/components/sections/ConnectWithUs";
 export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
-      <Hero />
-      <div className="space-y-12 md:space-y-16">
-        <section className="py-12 md:py-16 bg-gray-50">
+      <main>
+        <Hero />
+        <section id="portfolio" className="bg-gray-50">
           <GalleryGrid />
         </section>
-        <section className="py-12 md:py-16">
+        <section id="features">
           <Features />
         </section>
-        <section className="py-12 md:py-16 bg-gray-50">
+        <section id="testimonials" className="bg-gray-50">
           <Testimonials />
         </section>
-        <section className="py-12 md:py-16">
+        <section id="team">
           <TeamSection />
         </section>
-        <section className="py-12 md:py-16 bg-gray-50">
+        <section id="connect" className="bg-gray-50">
           <ConnectWithUs />
         </section>
-        <section className="py-12 md:py-16">
+        <section id="consultation">
           <ConsultationScheduler />
         </section>
-      </div>
+      </main>
     </div>
   );
 }

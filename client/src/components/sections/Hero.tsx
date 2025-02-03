@@ -34,11 +34,11 @@ export function Hero() {
         </div>
 
         <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2">
-          <div className="relative aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-            <span className="text-gray-500">Hero Image 1</span>
+          <div className="relative aspect-video rounded-lg flex items-center justify-center border-2 border-gray-200 bg-gray-50">
+            <span className="text-gray-500 text-lg">Hero Image 1</span>
           </div>
-          <div className="relative aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-            <span className="text-gray-500">Hero Image 2</span>
+          <div className="relative aspect-video rounded-lg flex items-center justify-center border-2 border-gray-200 bg-gray-50">
+            <span className="text-gray-500 text-lg">Hero Image 2</span>
           </div>
         </div>
       </div>
