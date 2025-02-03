@@ -52,7 +52,7 @@ export function Navbar() {
   };
 
   return (
-    <nav className="w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 border-b">
+    <nav className="w-full bg-white border-b sticky top-0 z-50">
       <div className="container px-4 md:px-6">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -80,7 +80,7 @@ export function Navbar() {
                 }}
                 className={`px-3 py-2 text-sm font-medium rounded-md transition-colors
                   ${activeSection === item.href.replace('#', '') 
-                    ? 'bg-gray-800 text-white' 
+                    ? 'bg-gray-900 text-white' 
                     : 'text-gray-600 hover:bg-gray-100'}`}
               >
                 {item.name}
