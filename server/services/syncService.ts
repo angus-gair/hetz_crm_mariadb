@@ -18,15 +18,17 @@ export class SyncService {
 
   async syncConsultationToCRM(consultationId: number): Promise<void> {
     try {
-      // Get consultation data from MySQL
-      const [consultation] = await query<any[]>(
-        `SELECT * FROM consultations WHERE id = ?`,
+      // Get consultation data from PostgreSQL
+      const consultations = await query<any[]>(
+        `SELECT * FROM consultations WHERE id = $1`,
         [consultationId]
       );
 
-      if (!consultation) {
+      if (!consultations || consultations.length === 0) {
         throw new Error(`Consultation not found: ${consultationId}`);
       }
+
+      const consultation = consultations[0];
 
       // Create sync record
       await this.createSyncRecord({
@@ -72,9 +74,9 @@ export class SyncService {
     entity_id: number;
   }): Promise<void> {
     await query(
-      `INSERT INTO sync_records (
-        direction, entity_type, entity_id, status, attempts, last_attempt
-      ) VALUES (?, ?, ?, 'pending', 0, NOW())`,
+      `INSERT INTO sync_records 
+       (direction, entity_type, entity_id, status, attempts, last_attempt)
+       VALUES ($1, $2, $3, 'pending', 0, NOW())`,
       [direction, entity_type, entity_id]
     );
   }
@@ -87,11 +89,11 @@ export class SyncService {
   ): Promise<void> {
     await query(
       `UPDATE sync_records 
-       SET status = ?, 
+       SET status = $1,
            attempts = attempts + 1,
-           error = ?,
+           error = $2,
            last_attempt = NOW()
-       WHERE entity_id = ? AND direction = ?`,
+       WHERE entity_id = $3 AND direction = $4`,
       [status, error || null, entityId, direction]
     );
   }
@@ -102,9 +104,9 @@ export class SyncService {
       const pendingSyncs = await query<SyncRecord[]>(
         `SELECT * FROM sync_records 
          WHERE status != 'success' 
-         AND attempts < ? 
+         AND attempts < $1
          ORDER BY last_attempt ASC 
-         LIMIT ?`,
+         LIMIT $2`,
         [this.MAX_ATTEMPTS, this.BATCH_SIZE]
       );
 
