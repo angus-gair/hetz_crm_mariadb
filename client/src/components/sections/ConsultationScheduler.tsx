@@ -328,7 +328,7 @@ export function ConsultationScheduler() {
 
               <Button
                 type="submit"
-                className={`w-full h-11 text-base bg-black hover:bg-gray-800 ${
+                className={`w-full h-11 text-base bg-black hover:bg-gray-800 text-white ${
                   !form.formState.isValid || Object.keys(form.formState.dirtyFields).length === 0
                     ? 'opacity-50 cursor-not-allowed'
                     : ''
