@@ -9,24 +9,39 @@ import { ConnectWithUs } from "@/components/sections/ConnectWithUs";
 export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
-      <main>
-        <Hero />
-        <section id="portfolio" className="bg-gray-50">
+      <main className="flex-1">
+        {/* Hero section - White background */}
+        <section id="home" className="bg-background">
+          <Hero />
+        </section>
+
+        {/* Portfolio section - Gray background */}
+        <section id="portfolio" className="py-20 bg-gray-50">
           <GalleryGrid />
         </section>
-        <section id="features">
+
+        {/* Features section - White background */}
+        <section id="features" className="py-20 bg-background">
           <Features />
         </section>
-        <section id="testimonials" className="bg-gray-50">
+
+        {/* Testimonials section - Gray background */}
+        <section id="testimonials" className="py-20 bg-gray-50">
           <Testimonials />
         </section>
-        <section id="team">
+
+        {/* Team section - White background */}
+        <section id="team" className="py-20 bg-background">
           <TeamSection />
         </section>
-        <section id="connect" className="bg-gray-50">
+
+        {/* Connect section - Gray background */}
+        <section id="connect" className="py-20 bg-gray-50">
           <ConnectWithUs />
         </section>
-        <section id="consultation">
+
+        {/* Consultation section - White background */}
+        <section id="consultation" className="py-20 bg-background">
           <ConsultationScheduler />
         </section>
       </main>
