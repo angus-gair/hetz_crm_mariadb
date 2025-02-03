@@ -58,6 +58,48 @@ export class SuiteCRMService {
     }
   }
 
+  private isValidJSON(str: string): boolean {
+    try {
+      JSON.parse(str);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  private isHTMLResponse(str: string): boolean {
+    return str.trim().toLowerCase().startsWith('<!doctype') || 
+           str.trim().toLowerCase().startsWith('<html');
+  }
+
+  private validateResponse(response: any): any {
+    if (typeof response.data === 'string') {
+      // Check if response is HTML
+      if (this.isHTMLResponse(response.data)) {
+        console.error('Received HTML response instead of JSON:', response.data.substring(0, 200));
+        throw new Error('Invalid response format: Received HTML instead of JSON');
+      }
+
+      // Check if response contains PHP errors
+      if (response.data.includes('Fatal error') ||
+          response.data.includes('Warning') ||
+          response.data.includes('Notice')) {
+        console.error('SuiteCRM returned PHP error:', response.data);
+        throw new Error('SuiteCRM server returned PHP errors');
+      }
+
+      // Try to parse JSON if string
+      if (!this.isValidJSON(response.data)) {
+        console.error('Invalid JSON response:', response.data);
+        throw new Error('Invalid JSON response from server');
+      }
+
+      return JSON.parse(response.data);
+    }
+
+    return response.data;
+  }
+
   private async login(): Promise<string> {
     try {
       if (!this.isServerAvailable) {
@@ -85,30 +127,27 @@ export class SuiteCRMService {
           'Accept': 'application/json'
         },
         timeout: this.timeout,
-        validateStatus: (status) => status === 200 // Only accept 200 status
+        validateStatus: null // Allow any status code for proper error handling
       });
 
-      // Check for PHP errors in response
-      if (typeof response.data === 'string') {
-        if (response.data.includes('Fatal error') ||
-            response.data.includes('Warning') ||
-            response.data.includes('Notice')) {
-          console.error('SuiteCRM returned PHP error:', response.data);
-          this.isServerAvailable = false;
-          throw new Error('SuiteCRM server returned PHP errors');
-        }
+      // Check HTTP status first
+      if (response.status !== 200) {
+        console.error(`HTTP ${response.status} received:`, response.statusText);
+        throw new Error(`Server returned status ${response.status}`);
       }
 
-      // Validate response format
-      if (!response.data?.id) {
-        console.error('Invalid SuiteCRM response format:', response.data);
-        this.isServerAvailable = false;
+      // Validate and parse response
+      const data = this.validateResponse(response);
+
+      if (!data?.id) {
+        console.error('Invalid login response format:', data);
         throw new Error('Invalid response format from SuiteCRM');
       }
 
       this.isServerAvailable = true;
       console.log('Successfully authenticated with SuiteCRM');
-      return response.data.id;
+      return data.id;
+
     } catch (error) {
       this.isServerAvailable = false;
       if (axios.isAxiosError(error)) {
@@ -120,6 +159,8 @@ export class SuiteCRMService {
           console.error('SuiteCRM server is not reachable:', error.message);
           throw new Error('SuiteCRM server is currently unavailable');
         }
+        console.error('Network error:', error.message);
+        throw new Error('Failed to connect to SuiteCRM server');
       }
       console.error('SuiteCRM login failed:', error);
       throw new Error('Failed to authenticate with SuiteCRM');
@@ -169,20 +210,18 @@ export class SuiteCRMService {
           'Accept': 'application/json'
         },
         timeout: this.timeout,
-        validateStatus: (status) => status === 200
+        validateStatus: null // Allow any status code for proper error handling
       });
 
-      // Check for PHP errors in response string
-      if (typeof response.data === 'string' && (
-        response.data.includes('Fatal error') ||
-        response.data.includes('Warning') ||
-        response.data.includes('Notice')
-      )) {
-        this.isServerAvailable = false;
-        throw new Error('SuiteCRM server returned PHP errors');
+      // Check HTTP status first
+      if (response.status !== 200) {
+        console.error(`HTTP ${response.status} received:`, response.statusText);
+        throw new Error(`Server returned status ${response.status}`);
       }
 
-      return response.data;
+      // Validate and parse response
+      return this.validateResponse(response);
+
     } catch (error) {
       if (retryCount < this.maxRetries) {
         const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
