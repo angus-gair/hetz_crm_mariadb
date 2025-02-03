@@ -19,7 +19,7 @@ router.post('/schedule-consultation', async (req, res) => {
       });
     }
 
-    console.log('3. Attempting to save consultation to local MySQL database');
+    console.log('3. Attempting to save consultation to PostgreSQL database');
     let localId;
     try {
       localId = await saveConsultation({
@@ -32,23 +32,26 @@ router.post('/schedule-consultation', async (req, res) => {
       });
       console.log('4. Consultation saved locally with ID:', localId);
 
-      // Trigger sync process
-      await syncService.syncConsultationToCRM(localId);
+      // Attempt immediate sync but don't wait for it
+      syncService.syncConsultationToCRM(localId).catch(error => {
+        console.error('Background sync error:', error);
+        // Error is logged but doesn't affect the response to the user
+      });
+
+      // Return success response
+      return res.json({
+        success: true,
+        message: 'Thank you for your consultation request! Our team will contact you shortly to confirm the details.',
+        consultationId: localId
+      });
 
     } catch (dbError) {
       console.error('Database error:', dbError);
       return res.status(500).json({
         success: false,
-        message: 'Unable to save your consultation. Please try again.'
+        message: 'We encountered an issue processing your request. Please try again or contact us directly.'
       });
     }
-
-    // Return success even if sync is pending - it will be handled by the sync service
-    return res.json({
-      success: true,
-      message: 'Thank you! Your consultation request has been received.',
-      localId
-    });
 
   } catch (error) {
     console.error('8. Fatal error in consultation request:', error);
