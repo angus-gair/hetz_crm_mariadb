@@ -294,7 +294,30 @@ export class SuiteCRMService {
         throw new Error('SuiteCRM server is not properly configured');
       }
 
-      console.log('Attempting to authenticate with SuiteCRM');
+      console.log('Attempting to authenticate with SuiteCRM at URL:', this.baseUrl);
+
+      // Test URL connectivity first
+      try {
+        const testResponse = await axios.get(`${this.baseUrl}/service/v4/rest.php`, {
+          timeout: 5000,
+          validateStatus: null
+        });
+        console.log('SuiteCRM server response status:', testResponse.status);
+        if (testResponse.status !== 200) {
+          throw new Error(`SuiteCRM server returned status ${testResponse.status}`);
+        }
+      } catch (connectError) {
+        console.error('Failed to connect to SuiteCRM server:', connectError);
+        if (axios.isAxiosError(connectError)) {
+          if (connectError.code === 'ECONNREFUSED') {
+            throw new Error(`Unable to connect to SuiteCRM server at ${this.baseUrl}. Please verify the server is running and accessible.`);
+          }
+          if (connectError.code === 'ENOTFOUND') {
+            throw new Error(`DNS lookup failed for ${this.baseUrl}. Please verify the URL is correct.`);
+          }
+        }
+        throw new Error(`Connection failed to SuiteCRM server: ${connectError.message}`);
+      }
 
       const loginPayload = {
         method: 'login',
@@ -309,19 +332,26 @@ export class SuiteCRMService {
         }
       };
 
+      console.log('Sending login request to SuiteCRM...');
+
       const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, loginPayload, {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         timeout: this.timeout,
-        validateStatus: null // Allow any status code for proper error handling
+        validateStatus: null
       });
 
       // Check HTTP status first
       if (response.status !== 200) {
         console.error(`HTTP ${response.status} received:`, response.statusText);
         throw new Error(`Server returned status ${response.status}`);
+      }
+
+      // Log raw response for debugging
+      if (typeof response.data === 'string') {
+        console.log('Raw response:', response.data.substring(0, 200));
       }
 
       // Validate and parse response
@@ -339,11 +369,11 @@ export class SuiteCRMService {
     } catch (error) {
       this.isServerAvailable = false;
       if (axios.isAxiosError(error)) {
-        if (error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
-          console.error('SuiteCRM server is not reachable:', error.message);
-          throw new Error('SuiteCRM server is currently unavailable');
-        }
-        console.error('Network error:', error.message);
+        console.error('Network error details:', {
+          code: error.code,
+          message: error.message,
+          response: error.response?.data
+        });
       }
       console.error('SuiteCRM login failed:', error);
       throw error;
