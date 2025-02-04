@@ -19,6 +19,8 @@ export class SyncService {
 
   async syncConsultationToCRM(consultationId: number): Promise<void> {
     try {
+      console.log(`Starting sync process for consultation ID: ${consultationId}`);
+
       // Get consultation data from PostgreSQL
       const consultations = await query<any[]>(
         `SELECT * FROM consultations WHERE id = $1`,
@@ -30,6 +32,12 @@ export class SyncService {
       }
 
       const consultation = consultations[0];
+      console.log('Retrieved consultation data:', {
+        id: consultation.id,
+        email: consultation.email,
+        name: consultation.name,
+        // Exclude sensitive data from logs
+      });
 
       // Create sync record
       await this.createSyncRecord({
@@ -37,6 +45,8 @@ export class SyncService {
         entity_type: 'consultation',
         entity_id: consultationId
       });
+
+      console.log('Created sync record, attempting CRM sync...');
 
       // Attempt to sync with CRM
       const result = await suiteCRMService.createContact({
@@ -48,22 +58,38 @@ export class SyncService {
         preferredTime: consultation.preferred_time
       });
 
+      console.log('CRM sync attempt result:', {
+        success: result.success,
+        message: result.message
+      });
+
       // Update sync status
       if (result.success) {
+        console.log(`Successfully synced consultation ${consultationId} to CRM`);
         await this.updateSyncStatus(consultationId, 'mysql_to_crm', 'success');
         await this.updateConsultationSyncStatus(consultationId, 'synced');
       } else {
-        throw new Error(result.message);
+        throw new Error(result.message || 'Unknown sync error');
       }
     } catch (error) {
       console.error(`Failed to sync consultation ${consultationId} to CRM:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
       await this.updateSyncStatus(
         consultationId,
         'mysql_to_crm',
         'failed',
-        error instanceof Error ? error.message : 'Unknown error'
+        errorMessage
       );
-      await this.updateConsultationSyncStatus(consultationId, 'failed', error instanceof Error ? error.message : 'Unknown error');
+
+      await this.updateConsultationSyncStatus(
+        consultationId, 
+        'failed', 
+        errorMessage
+      );
+
+      // Re-throw the error to ensure proper error handling up the chain
+      throw error;
     }
   }
 
