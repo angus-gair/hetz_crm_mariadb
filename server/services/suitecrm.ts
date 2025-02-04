@@ -156,9 +156,25 @@ export class SuiteCRMService {
       const [firstName, ...lastNameParts] = contactData.name.split(' ');
       const lastName = lastNameParts.join(' ') || '-';
 
-      console.log('Creating contact in SuiteCRM:', contactData.email);
+      console.log('Creating records in SuiteCRM for:', contactData.email);
 
-      // Create contact record
+      // 1. Create Account record
+      const account = await this.makeRequest('set_entry', {
+        module_name: 'Accounts',
+        name_value_list: {
+          name: `${contactData.name} - Residential`,
+          phone_office: contactData.phone,
+          email1: contactData.email,
+          description: 'Cubby House Consultation Client',
+          account_type: 'Customer'
+        }
+      });
+
+      if (!account.id) {
+        throw new Error('Failed to create account record');
+      }
+
+      // 2. Create Contact record (now linked to Account)
       const contact = await this.makeRequest('set_entry', {
         module_name: 'Contacts',
         name_value_list: {
@@ -167,15 +183,53 @@ export class SuiteCRMService {
           email1: contactData.email,
           phone_mobile: contactData.phone,
           description: contactData.notes || '',
-          lead_source: 'Web Site'
+          lead_source: 'Web Site',
+          account_id: account.id
         }
       });
 
       if (!contact.id) {
-        throw new Error('Failed to create contact: No ID returned');
+        throw new Error('Failed to create contact record');
       }
 
-      // Create meeting if date/time provided
+      // Link Contact to Account
+      await this.makeRequest('set_relationship', {
+        module_name: 'Accounts',
+        module_id: account.id,
+        link_field_name: 'contacts',
+        related_ids: [contact.id]
+      });
+
+      // 3. Create Lead record
+      const lead = await this.makeRequest('set_entry', {
+        module_name: 'Leads',
+        name_value_list: {
+          first_name: firstName,
+          last_name: lastName,
+          phone_mobile: contactData.phone,
+          email1: contactData.email,
+          description: 'Cubby House Consultation Inquiry',
+          status: 'New',
+          lead_source: 'Web Site',
+          account_id: account.id,
+          contact_id: contact.id
+        }
+      });
+
+      // 4. Create Note for additional information
+      if (contactData.notes) {
+        const note = await this.makeRequest('set_entry', {
+          module_name: 'Notes',
+          name_value_list: {
+            name: 'Initial Consultation Notes',
+            description: contactData.notes,
+            parent_type: 'Accounts',
+            parent_id: account.id
+          }
+        });
+      }
+
+      // 5. Create meeting if date/time provided
       if (contactData.preferredDate && contactData.preferredTime) {
         console.log('Creating meeting record');
         const meetingDate = new Date(contactData.preferredDate);
@@ -196,17 +250,25 @@ export class SuiteCRMService {
             status: 'Planned',
             description: contactData.notes || '',
             location: 'Online/Phone',
-            parent_type: 'Contacts',
-            parent_id: contact.id
+            parent_type: 'Accounts',
+            parent_id: account.id
           }
         });
 
         if (meeting.id) {
+          // Link meeting to both contact and account
           await this.makeRequest('set_relationship', {
             module_name: 'Meetings',
             module_id: meeting.id,
             link_field_name: 'contacts',
             related_ids: [contact.id]
+          });
+
+          await this.makeRequest('set_relationship', {
+            module_name: 'Meetings',
+            module_id: meeting.id,
+            link_field_name: 'accounts',
+            related_ids: [account.id]
           });
         }
       }
