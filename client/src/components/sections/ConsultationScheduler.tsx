@@ -74,26 +74,7 @@ export function ConsultationScheduler() {
   async function onSubmit(data: ConsultationData) {
     if (isSubmitting) return;
 
-    if (!date) {
-      toast({
-        title: "Error",
-        description: "Please select a consultation date",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!data.preferredTime) {
-      toast({
-        title: "Error",
-        description: "Please select a preferred time",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsSubmitting(true);
-
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
@@ -333,12 +314,9 @@ export function ConsultationScheduler() {
               <Button
                 type="submit"
                 className="w-full h-11 text-base text-white bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isSubmitting || !form.formState.isValid || Object.keys(form.formState.dirtyFields).length === 0}
+                disabled={isSubmitting}
               >
-                {isSubmitting ? "Scheduling..." : 
-                  !form.formState.isValid && Object.keys(form.formState.dirtyFields).length > 0 
-                    ? "Please Fill All Required Fields"
-                    : "Schedule Consultation"}
+                {isSubmitting ? "Scheduling..." : "Schedule Consultation"}
               </Button>
             </form>
           </Form>
