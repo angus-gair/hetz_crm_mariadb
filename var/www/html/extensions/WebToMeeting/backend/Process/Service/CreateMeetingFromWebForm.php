@@ -64,6 +64,7 @@ class CreateMeetingFromWebForm implements ProcessHandlerInterface
 
         $formData = $options['formData'];
 
+        // Validate required fields
         if (empty($formData['name'])) {
             throw new InvalidArgumentException('Name is required');
         }
@@ -74,6 +75,7 @@ class CreateMeetingFromWebForm implements ProcessHandlerInterface
             throw new InvalidArgumentException('Preferred date and time is required');
         }
 
+        // Validate datetime format
         try {
             new \DateTime($formData['preferredDatetime']);
             if (isset($formData['endDatetime'])) {

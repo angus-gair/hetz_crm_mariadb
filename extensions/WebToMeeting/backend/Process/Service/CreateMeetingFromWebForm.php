@@ -5,7 +5,6 @@ namespace App\Extension\WebToMeeting\backend\Process\Service;
 use ApiPlatform\Core\Exception\InvalidArgumentException;
 use App\Process\Entity\Process;
 use App\Process\Service\ProcessHandlerInterface;
-use App\Engine\Service\MeetingService;
 use App\Module\Meeting\Entity\Meeting;
 use App\Module\Users\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
@@ -16,34 +15,16 @@ class CreateMeetingFromWebForm implements ProcessHandlerInterface
 {
     public const PROCESS_TYPE = 'create-meeting-from-webform';
 
-    /**
-     * @var EntityManagerInterface
-     */
     private $entityManager;
-
-    /**
-     * @var MeetingService
-     */
-    private $meetingService;
-
-    /**
-     * @var Security
-     */
     private $security;
-
-    /**
-     * @var LoggerInterface
-     */
     private $logger;
 
     public function __construct(
         EntityManagerInterface $entityManager,
-        MeetingService $meetingService,
         Security $security,
         LoggerInterface $logger
     ) {
         $this->entityManager = $entityManager;
-        $this->meetingService = $meetingService;
         $this->security = $security;
         $this->logger = $logger;
     }
@@ -55,7 +36,6 @@ class CreateMeetingFromWebForm implements ProcessHandlerInterface
 
     public function requiredAuthRole(): string
     {
-        // Allow API access with user authentication
         return 'ROLE_USER';
     }
 
@@ -77,13 +57,13 @@ class CreateMeetingFromWebForm implements ProcessHandlerInterface
     public function validate(Process $process): void
     {
         $options = $process->getOptions();
-        
+
         if (empty($options['formData'])) {
             throw new InvalidArgumentException('No form data provided');
         }
 
         $formData = $options['formData'];
-        
+
         // Validate required fields
         if (empty($formData['name'])) {
             throw new InvalidArgumentException('Name is required');
@@ -110,13 +90,13 @@ class CreateMeetingFromWebForm implements ProcessHandlerInterface
     {
         try {
             $this->logger->info('Starting meeting creation from web form');
-            
+
             $options = $process->getOptions();
             $formData = $options['formData'];
 
             // Create new meeting
             $meeting = new Meeting();
-            
+
             // Set basic meeting details
             $meeting->setName('Consultation with ' . $formData['name']);
             $meeting->setDescription(
@@ -135,17 +115,17 @@ class CreateMeetingFromWebForm implements ProcessHandlerInterface
 
             $meeting->setDateStart($startDate);
             $meeting->setDateEnd($endDate);
-            
+
             // Set default status and type
             $meeting->setStatus('Planned');
             $meeting->setType('Web Consultation');
-            
+
             // Get current user as creator
             /** @var User $currentUser */
             $currentUser = $this->security->getUser();
             $meeting->setAssignedUser($currentUser);
             $meeting->setCreatedBy($currentUser);
-            
+
             // Save the meeting
             $this->entityManager->persist($meeting);
             $this->entityManager->flush();

@@ -33,16 +33,14 @@ export class SuiteCRMService {
   private readonly timeout: number = 30000;
   private readonly maxRetries: number = 3;
   private csrfToken: string | null = null;
+  // Hard-coded credentials as requested
+  private readonly username: string = 'admin';
+  private readonly password: string = 'Jamfinnarc1776!';
 
   constructor() {
     try {
-      const baseUrl = process.env.SUITECRM_URL;
-      if (!baseUrl) {
-        throw new Error('Missing required SuiteCRM configuration');
-      }
-
-      this.baseUrl = baseUrl.startsWith('http') ? baseUrl : `http://${baseUrl}`;
-      this.baseUrl = this.baseUrl.replace(/\/$/, '');
+      // Using the provided IP directly
+      this.baseUrl = 'http://4.236.188.48';
       console.log('SuiteCRM Service initialized with base URL:', this.baseUrl);
     } catch (error) {
       console.error('Failed to initialize SuiteCRM service:', error);
@@ -61,7 +59,7 @@ export class SuiteCRMService {
       });
 
       const csrfToken = response.headers['x-csrf-token'] || 
-                       response.headers['x-xsrf-token'];
+                     response.headers['x-xsrf-token'];
 
       if (!csrfToken) {
         console.error('No CSRF token found in response');
@@ -86,6 +84,37 @@ export class SuiteCRMService {
         throw new Error('Failed to obtain CSRF token');
       }
 
+      // First authenticate
+      const authResponse = await axios.post(
+        `${this.baseUrl}/Api/graphql`,
+        {
+          query: `
+            mutation login($username: String!, $password: String!) {
+              login(input: { username: $username, password: $password }) {
+                token
+              }
+            }
+          `,
+          variables: {
+            username: this.username,
+            password: this.password
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': this.csrfToken
+          }
+        }
+      );
+
+      const token = authResponse.data?.data?.login?.token;
+      if (!token) {
+        throw new Error('Authentication failed');
+      }
+
+      // Then execute the actual query
       const response = await axios.post(
         `${this.baseUrl}/Api/graphql`,
         {
@@ -96,7 +125,8 @@ export class SuiteCRMService {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'X-CSRF-TOKEN': this.csrfToken
+            'X-CSRF-TOKEN': this.csrfToken,
+            'Authorization': `Bearer ${token}`
           },
           timeout: this.timeout
         }
