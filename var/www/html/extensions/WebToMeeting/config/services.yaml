@@ -1,0 +1,8 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    App\Extension\WebToMeeting\backend\Process\Service\CreateMeetingFromWebForm:
+        tags: ['app.process.handler']

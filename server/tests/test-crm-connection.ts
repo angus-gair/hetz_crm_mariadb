@@ -24,16 +24,28 @@ async function getCSRFToken(): Promise<string | null> {
     console.log('Fetching CSRF token...');
     const response = await axios.get('http://4.236.188.48/api/graphql', {
       headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
       },
+      withCredentials: true,
       validateStatus: status => status < 500
     });
 
-    // Extract CSRF token from response headers or cookies
+    console.log('Response headers:', response.headers);
+
+    // Try different possible CSRF token header names
     const csrfToken = response.headers['x-csrf-token'] || 
-                     response.headers['x-xsrf-token'];
+                     response.headers['x-xsrf-token'] ||
+                     response.headers['csrf-token'] ||
+                     response.data?.csrf_token;
 
     if (!csrfToken) {
+      console.error('Response details:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        data: response.data
+      });
       console.error('No CSRF token found in response');
       return null;
     }
@@ -45,7 +57,8 @@ async function getCSRFToken(): Promise<string | null> {
       console.error('Failed to get CSRF token:', {
         message: error.message,
         status: error.response?.status,
-        data: error.response?.data
+        data: error.response?.data,
+        headers: error.response?.headers
       });
     } else {
       console.error('Unexpected error while getting CSRF token:', error);

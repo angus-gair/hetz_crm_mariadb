@@ -217,6 +217,46 @@ export class SyncService {
       [status, error || null, consultationId]
     );
   }
+
+  async processPendingSyncs(): Promise<void> {
+    try {
+      console.log('Processing pending sync records...');
+
+      // Get pending sync records
+      const pendingRecords = await query<SyncRecord[]>(
+        `SELECT * FROM sync_records 
+         WHERE status = 'pending' 
+         AND attempts < $1 
+         ORDER BY last_attempt ASC 
+         LIMIT $2`,
+        [this.MAX_ATTEMPTS, this.BATCH_SIZE]
+      );
+
+      if (!pendingRecords.length) {
+        console.log('No pending sync records found');
+        return;
+      }
+
+      console.log(`Found ${pendingRecords.length} pending sync records`);
+
+      for (const record of pendingRecords) {
+        try {
+          if (record.direction === 'local_to_crm') {
+            if (record.entity_type === 'consultation') {
+              await this.syncConsultationToCRM(record.entity_id);
+            }
+          }
+          // Add more sync types here as needed
+        } catch (error) {
+          console.error(`Failed to process sync record ${record.id}:`, error);
+          await this.handleSyncError(record.entity_id, error);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing pending syncs:', error);
+      throw error;
+    }
+  }
 }
 
 export const syncService = new SyncService();
