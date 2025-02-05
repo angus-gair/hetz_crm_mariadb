@@ -19,7 +19,9 @@ export class SuiteCRMService {
   private readonly password: string;
 
   constructor() {
-    this.baseUrl = process.env.SUITECRM_URL || 'http://4.236.188.48';
+    // Ensure URL has proper protocol
+    const url = process.env.SUITECRM_URL || 'http://4.236.188.48';
+    this.baseUrl = url.startsWith('http') ? url : `http://${url}`;
     this.username = process.env.SUITECRM_USERNAME || '';
     this.password = process.env.SUITECRM_PASSWORD || '';
 
@@ -31,7 +33,8 @@ export class SuiteCRMService {
       const loginData = {
         user_auth: {
           user_name: this.username.trim(),
-          password: this.password.trim()
+          password: this.password.trim(),
+          version: '4.1'
         },
         application_name: 'CubbyLuxe-Integration'
       };
