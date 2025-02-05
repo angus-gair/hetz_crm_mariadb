@@ -1,5 +1,4 @@
 import axios from 'axios';
-import util from 'util';
 import crypto from 'crypto';
 
 interface ConsultationData {
@@ -19,46 +18,60 @@ export class SuiteCRMService {
   private sessionId: string | null = null;
   private readonly username: string;
   private readonly password: string;
-  private readonly md5Password: string;
 
   constructor() {
-    this.baseUrl = 'http://4.236.188.48';
+    // Remove hardcoded URL, use environment variable with fallback
+    this.baseUrl = process.env.SUITECRM_URL || 'http://4.236.188.48';
+
+    // Ensure we're reading from environment variables
     this.username = process.env.SUITECRM_USERNAME || '';
     this.password = process.env.SUITECRM_PASSWORD || '';
-    // Use UTF-8 encoding for password hashing
-    this.md5Password = crypto.createHash('md5').update(this.password, 'utf8').digest('hex');
-    console.log('[SuiteCRM] Service initialized with base URL:', this.baseUrl);
+
+    // Add debug logging
+    console.log('[SuiteCRM] Service initialized:', {
+      baseUrl: this.baseUrl,
+      username: this.username ? 'set' : 'not set',
+      password: this.password ? 'set' : 'not set'
+    });
   }
 
   private async authenticate(): Promise<string | null> {
     try {
-      console.log('[SuiteCRM] Authenticating using REST v4...');
+      console.log('[SuiteCRM] Starting authentication...');
 
-      // Prepare login data exactly as SuiteCRM expects it
+      if (!this.username || !this.password) {
+        console.error('[SuiteCRM] Missing credentials - username or password not set');
+        return null;
+      }
+
+      // Use SuiteCRM v4.1 REST API format
       const loginData = {
         user_auth: {
-          user_name: this.username,
-          password: this.md5Password,
-          version: '4.1'
+          user_name: this.username.trim(),
+          password: this.password.trim()
         },
-        application: 'CubbyLuxe-Integration'
+        application_name: 'CubbyLuxe-Integration'
       };
 
-      // Convert to URL-encoded format that SuiteCRM expects
-      const postData = 'method=login' +
-        '&input_type=JSON' +
-        '&response_type=JSON' +
-        '&rest_data=' + encodeURIComponent(JSON.stringify(loginData));
+      console.log('[SuiteCRM] Preparing login request for user:', this.username);
 
-      console.log('[SuiteCRM] Sending login request with data:', {
-        url: `${this.baseUrl}/service/v4_1/rest.php`,
-        username: this.username,
-        dataLength: postData.length
+      const postData = {
+        method: 'login',
+        input_type: 'JSON',
+        response_type: 'JSON',
+        rest_data: JSON.stringify(loginData)
+      };
+
+      const formData = new URLSearchParams();
+      Object.entries(postData).forEach(([key, value]) => {
+        formData.append(key, value);
       });
+
+      console.log('[SuiteCRM] Sending login request to:', `${this.baseUrl}/service/v4_1/rest.php`);
 
       const authResult = await axios.post(
         `${this.baseUrl}/service/v4_1/rest.php`,
-        postData,
+        formData.toString(),
         {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -68,31 +81,29 @@ export class SuiteCRMService {
         }
       );
 
-      // Log response for debugging (masking sensitive data)
       console.log('[SuiteCRM] Auth response:', {
         status: authResult.status,
         statusText: authResult.statusText,
-        data: authResult.data ? JSON.stringify(authResult.data, null, 2) : null
+        hasData: !!authResult.data,
+        data: typeof authResult.data === 'object' ? JSON.stringify(authResult.data, null, 2) : authResult.data
       });
 
-      // Check if the response indicates an authentication error
       if (authResult.data?.name === 'Invalid Login') {
         console.error('[SuiteCRM] Authentication failed:', authResult.data.description);
         return null;
       }
 
-      // For successful login, session ID should be in the response
-      if (authResult.data?.id) {
-        this.sessionId = authResult.data.id;
-        console.log('[SuiteCRM] Successfully authenticated with session ID:', this.sessionId.substring(0, 8) + '...');
-        return this.sessionId;
+      if (!authResult.data?.id) {
+        console.error('[SuiteCRM] No session ID in response');
+        return null;
       }
 
-      console.error('[SuiteCRM] No session ID in response');
-      return null;
+      this.sessionId = authResult.data.id;
+      console.log('[SuiteCRM] Successfully authenticated');
+      return this.sessionId;
 
     } catch (error) {
-      console.error('[SuiteCRM] Authentication failed:', error);
+      console.error('[SuiteCRM] Authentication error:', error);
       if (axios.isAxiosError(error)) {
         console.error('[SuiteCRM] Error details:', {
           status: error.response?.status,
