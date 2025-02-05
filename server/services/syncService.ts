@@ -32,6 +32,10 @@ export class SyncService {
       }
 
       const consultation = consultations[0];
+
+      // Validate consultation data before proceeding
+      this.validateConsultationData(consultation);
+
       await this.validateAndCreateSyncRecord(consultationId, consultation);
 
       // Enhanced server validation
@@ -49,14 +53,64 @@ export class SyncService {
     }
   }
 
+  private validateConsultationData(consultation: any) {
+    if (!consultation.name?.trim()) {
+      throw new Error('Name is required');
+    }
+    if (!consultation.email?.trim()) {
+      throw new Error('Email is required');
+    }
+    if (!consultation.phone?.trim()) {
+      throw new Error('Phone is required');
+    }
+
+    // Validate time format if provided
+    if (consultation.preferred_time) {
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(consultation.preferred_time)) {
+        throw new Error('Invalid time format. Expected HH:mm');
+      }
+    }
+
+    // Validate date format if provided
+    if (consultation.preferred_date) {
+      const date = new Date(consultation.preferred_date);
+      if (isNaN(date.getTime())) {
+        throw new Error('Invalid date format');
+      }
+    }
+  }
+
   private async getConsultationData(consultationId: number) {
-    return query<any[]>(
-      `SELECT *, MD5(CONCAT(name, email, phone, notes, 
-         COALESCE(preferred_date::text, ''), 
-         COALESCE(preferred_time, ''))) as checksum 
-       FROM consultations WHERE id = $1`,
+    const result = await query<any[]>(
+      `SELECT 
+        id, name, email, phone, notes,
+        preferred_date,
+        CASE 
+          WHEN preferred_time IS NULL OR preferred_time = '' THEN NULL
+          ELSE TO_CHAR(preferred_time::time, 'HH24:MI')
+        END as preferred_time,
+        MD5(CONCAT(
+          name, 
+          email, 
+          phone, 
+          COALESCE(notes, ''), 
+          COALESCE(preferred_date::text, ''),
+          COALESCE(preferred_time::text, '')
+        )) as checksum
+      FROM consultations 
+      WHERE id = $1`,
       [consultationId]
     );
+
+    console.log('Retrieved consultation data:', {
+      id: result[0]?.id,
+      name: result[0]?.name,
+      preferred_date: result[0]?.preferred_date,
+      preferred_time: result[0]?.preferred_time
+    });
+
+    return result;
   }
 
   private async validateAndCreateSyncRecord(consultationId: number, consultation: any) {
@@ -73,17 +127,36 @@ export class SyncService {
     // Format the time properly if it exists
     let preferredTime = consultation.preferred_time;
     if (preferredTime) {
-      // Ensure time is in HH:mm format
-      preferredTime = preferredTime.replace(/^(\d{1,2}):(\d{2}).*$/, '$1:$2');
+      // Ensure time is in HH:mm format and handle null/empty values
+      try {
+        // Parse the time string and format it
+        const timeMatch = preferredTime.toString().match(/^(\d{1,2}):(\d{2})$/);
+        if (timeMatch) {
+          const [_, hours, minutes] = timeMatch;
+          preferredTime = `${hours.padStart(2, '0')}:${minutes}`;
+        } else {
+          console.log('Invalid time format:', preferredTime);
+          preferredTime = null;
+        }
+      } catch (error) {
+        console.error('Error formatting time:', error);
+        preferredTime = null;
+      }
     }
+
+    console.log('Attempting CRM sync with formatted data:', {
+      name: consultation.name,
+      preferredDate: consultation.preferred_date,
+      preferredTime
+    });
 
     return await suiteCRMService.createContact({
       name: consultation.name,
       email: consultation.email,
       phone: consultation.phone,
       notes: consultation.notes,
-      preferredDate: consultation.preferred_date?.toISOString(),
-      preferredTime: preferredTime
+      preferredDate: consultation.preferred_date ? new Date(consultation.preferred_date).toISOString() : undefined,
+      preferredTime: preferredTime || undefined
     });
   }
 
