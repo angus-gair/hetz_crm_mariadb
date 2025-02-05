@@ -1,5 +1,6 @@
 import axios from 'axios';
 import util from 'util';
+import crypto from 'crypto';
 
 interface ConsultationData {
   name: string;
@@ -15,59 +16,65 @@ export class SuiteCRMService {
   private isServerAvailable: boolean = true;
   private readonly timeout: number = 30000;
   private readonly maxRetries: number = 3;
-  private csrfToken: string | null = null;
-  private readonly username: string = process.env.SUITECRM_USERNAME || 'admin';
-  private readonly password: string = process.env.SUITECRM_PASSWORD || 'Jamfinnarc1776!';
+  private sessionId: string | null = null;
+  private readonly username: string;
+  private readonly password: string;
 
   constructor() {
-    try {
-      this.baseUrl = 'http://4.236.188.48';
-      console.log('[SuiteCRM] Service initialized with base URL:', this.baseUrl);
-    } catch (error) {
-      console.error('[SuiteCRM] Failed to initialize service:', error);
-      this.isServerAvailable = false;
-    }
+    this.baseUrl = 'http://4.236.188.48';
+    this.username = process.env.SUITECRM_USERNAME || '';
+    this.password = process.env.SUITECRM_PASSWORD || '';
+    console.log('[SuiteCRM] Service initialized with base URL:', this.baseUrl);
   }
 
-  private async getCSRFToken(): Promise<string | null> {
+  private async authenticate(): Promise<string | null> {
     try {
-      console.log('[SuiteCRM] Fetching CSRF token...');
-      const response = await axios.get(`${this.baseUrl}/legacy/WebToMeeting/token`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+      console.log('[SuiteCRM] Authenticating using REST v4...');
+
+      const authResult = await axios.post(
+        `${this.baseUrl}/service/v4_1/rest.php`, 
+        {
+          method: 'login',
+          input_type: 'JSON',
+          response_type: 'JSON',
+          rest_data: {
+            user_auth: {
+              user_name: this.username,
+              password: this.password,
+              version: '4.1'
+            },
+            application_name: 'CubbyLuxe-Integration',
+            name_value_list: []
+          }
         },
-        validateStatus: status => status < 500
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          timeout: this.timeout
+        }
+      );
+
+      console.log('[SuiteCRM] Auth response:', {
+        status: authResult.status,
+        statusText: authResult.statusText,
+        hasData: !!authResult.data
       });
 
-      console.log('[SuiteCRM] CSRF Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-        data: util.inspect(response.data, { depth: null })
-      });
-
-      const csrfToken = response.headers['x-csrf-token'] || 
-                       response.headers['x-xsrf-token'] ||
-                       response.headers['csrf-token'] ||
-                       response.data?.csrf_token ||
-                       response.data?.token;
-
-      if (!csrfToken) {
-        console.error('[SuiteCRM] No CSRF token found in response');
-        return null;
+      if (authResult.data?.id) {
+        this.sessionId = authResult.data.id;
+        return this.sessionId;
       }
 
-      console.log('[SuiteCRM] Successfully obtained CSRF token');
-      return csrfToken;
+      console.error('[SuiteCRM] No session ID in response');
+      return null;
     } catch (error) {
-      console.error('[SuiteCRM] Failed to get CSRF token:', error);
+      console.error('[SuiteCRM] Authentication failed:', error);
       if (axios.isAxiosError(error)) {
-        console.error('[SuiteCRM] Error response:', {
+        console.error('[SuiteCRM] Auth error details:', {
           status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          headers: error.response?.headers
+          data: error.response?.data
         });
       }
       return null;
@@ -105,72 +112,71 @@ export class SuiteCRMService {
       const endDate = new Date(meetingDate);
       endDate.setHours(endDate.getHours() + 1);
 
-      // Get CSRF token
-      const csrfToken = await this.getCSRFToken();
-      if (!csrfToken) {
-        throw new Error('Failed to obtain CSRF token');
+      // Authenticate first
+      const sessionId = await this.authenticate();
+      if (!sessionId) {
+        throw new Error('Authentication failed');
       }
 
-      const requestData = {
-        formData: {
-          name: consultationData.name,
-          email: consultationData.email,
-          phone: consultationData.phone,
-          notes: consultationData.notes || '',
-          preferredDatetime: meetingDate.toISOString(),
-          endDatetime: endDate.toISOString()
+      const meetingData = {
+        method: 'set_entry',
+        input_type: 'JSON',
+        response_type: 'JSON',
+        rest_data: {
+          session: sessionId,
+          module_name: 'Meetings',
+          name_value_list: [
+            { name: 'name', value: `Consultation with ${consultationData.name}` },
+            { name: 'description', value: `Contact Details:\nName: ${consultationData.name}\nEmail: ${consultationData.email}\nPhone: ${consultationData.phone}\n\nNotes:\n${consultationData.notes || ''}` },
+            { name: 'status', value: 'Planned' },
+            { name: 'type', value: 'Web Consultation' },
+            { name: 'date_start', value: meetingDate.toISOString() },
+            { name: 'date_end', value: endDate.toISOString() },
+            { name: 'duration_hours', value: '1' },
+            { name: 'duration_minutes', value: '0' }
+          ]
         }
       };
 
       console.log('[SuiteCRM] Sending meeting creation request:', {
-        url: `${this.baseUrl}/legacy/WebToMeeting/create`,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-CSRF-TOKEN': '[MASKED]'
-        },
+        url: `${this.baseUrl}/service/v4_1/rest.php`,
         data: {
-          ...requestData,
-          formData: {
-            ...requestData.formData,
-            email: '***@***.com'
+          ...meetingData,
+          rest_data: {
+            ...meetingData.rest_data,
+            name_value_list: meetingData.rest_data.name_value_list.map(item => 
+              item.name === 'description' ? { ...item, value: '[MASKED]' } : item
+            )
           }
         }
       });
 
-      // Create meeting through WebToMeeting endpoint
       const meetingResponse = await axios.post(
-        `${this.baseUrl}/legacy/WebToMeeting/create`,
-        requestData,
+        `${this.baseUrl}/service/v4_1/rest.php`,
+        meetingData,
         {
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
+            'Accept': 'application/json'
           },
-          validateStatus: status => true // Don't throw on any status
+          timeout: this.timeout
         }
       );
 
       console.log('[SuiteCRM] Meeting creation response:', {
         status: meetingResponse.status,
         statusText: meetingResponse.statusText,
-        headers: meetingResponse.headers,
         data: util.inspect(meetingResponse.data, { depth: null })
       });
 
-      if (meetingResponse.status >= 400) {
-        throw new Error(`HTTP ${meetingResponse.status}: ${meetingResponse.statusText}`);
-      }
-
-      if (meetingResponse.data?.success) {
-        console.log('[SuiteCRM] Successfully created meeting');
+      if (meetingResponse.data?.id) {
+        console.log('[SuiteCRM] Successfully created meeting with ID:', meetingResponse.data.id);
         return {
           success: true,
           message: 'Thank you! Your consultation request has been received. Our team will contact you shortly to confirm the details.'
         };
       } else {
-        throw new Error(meetingResponse.data?.message || 'Failed to create meeting in SuiteCRM');
+        throw new Error('Invalid response format from SuiteCRM');
       }
 
     } catch (error) {
