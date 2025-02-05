@@ -33,6 +33,44 @@ export class SuiteCRMService {
   private readonly timeout: number = 15000; // 15 seconds timeout
   private readonly maxRetries: number = 3;
 
+  private async testServerConnection(): Promise<boolean> {
+    try {
+      console.log('Testing SuiteCRM server connection...');
+      const testResponse = await axios.get(`${this.baseUrl}/service/v4/rest.php`, {
+        timeout: 5000,
+        validateStatus: null
+      });
+
+      // Check if we got a successful response
+      if (testResponse.status !== 200) {
+        console.error(`SuiteCRM server returned status ${testResponse.status}`);
+        return false;
+      }
+
+      // Check for PHP configuration issues
+      const responseText = testResponse.data?.toString() || '';
+      if (responseText.includes('Cannot declare class LanguageManager')) {
+        console.error('SuiteCRM server has a LanguageManager class conflict. Try clearing the cache:');
+        console.error('1. Access your SuiteCRM admin panel');
+        console.error('2. Go to Admin > Repair > Quick Repair and Rebuild');
+        console.error('3. Clear all caches');
+        return false;
+      }
+
+      if (responseText.includes('Fatal error') ||
+          responseText.includes('Warning') ||
+          responseText.includes('Notice')) {
+        console.error('SuiteCRM PHP Configuration Issue:', responseText);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Failed to connect to SuiteCRM server:', error);
+      return false;
+    }
+  }
+
   constructor() {
     try {
       // Get configuration from environment variables
@@ -51,7 +89,14 @@ export class SuiteCRMService {
       this.baseUrl = baseUrl.startsWith('http') ? baseUrl : `http://${baseUrl}`;
       new URL(this.baseUrl); // Validate URL format
 
-      console.log('SuiteCRM service initialized with URL:', this.baseUrl);
+      // Test server connection immediately
+      this.testServerConnection().then(available => {
+        this.isServerAvailable = available;
+        if (available) {
+          console.log('Successfully connected to SuiteCRM server');
+        }
+      });
+
     } catch (error) {
       console.error('Invalid SuiteCRM configuration:', error);
       this.isServerAvailable = false;
@@ -340,28 +385,7 @@ export class SuiteCRMService {
 
       console.log('Attempting to authenticate with SuiteCRM at URL:', this.baseUrl);
 
-      // Test URL connectivity first
-      try {
-        const testResponse = await axios.get(`${this.baseUrl}/service/v4/rest.php`, {
-          timeout: 5000,
-          validateStatus: null
-        });
-        console.log('SuiteCRM server response status:', testResponse.status);
-        if (testResponse.status !== 200) {
-          throw new Error(`SuiteCRM server returned status ${testResponse.status}`);
-        }
-      } catch (connectError) {
-        console.error('Failed to connect to SuiteCRM server:', connectError);
-        if (axios.isAxiosError(connectError)) {
-          if (connectError.code === 'ECONNREFUSED') {
-            throw new Error(`Unable to connect to SuiteCRM server at ${this.baseUrl}. Please verify the server is running and accessible.`);
-          }
-          if (connectError.code === 'ENOTFOUND') {
-            throw new Error(`DNS lookup failed for ${this.baseUrl}. Please verify the URL is correct.`);
-          }
-        }
-        throw new Error(`Connection failed to SuiteCRM server: ${connectError.message}`);
-      }
+      // Test URL connectivity first (moved to testServerConnection)
 
       const loginPayload = {
         method: 'login',
