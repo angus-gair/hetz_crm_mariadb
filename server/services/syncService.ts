@@ -70,13 +70,20 @@ export class SyncService {
   }
 
   private async attemptCRMSync(consultation: any) {
+    // Format the time properly if it exists
+    let preferredTime = consultation.preferred_time;
+    if (preferredTime) {
+      // Ensure time is in HH:mm format
+      preferredTime = preferredTime.replace(/^(\d{1,2}):(\d{2}).*$/, '$1:$2');
+    }
+
     return await suiteCRMService.createContact({
       name: consultation.name,
       email: consultation.email,
       phone: consultation.phone,
       notes: consultation.notes,
       preferredDate: consultation.preferred_date?.toISOString(),
-      preferredTime: consultation.preferred_time
+      preferredTime: preferredTime
     });
   }
 
