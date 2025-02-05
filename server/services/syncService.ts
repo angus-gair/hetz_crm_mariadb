@@ -86,17 +86,14 @@ export class SyncService {
       `SELECT 
         id, name, email, phone, notes,
         preferred_date,
-        CASE 
-          WHEN preferred_time IS NULL OR preferred_time = '' THEN NULL
-          ELSE TO_CHAR(preferred_time::time, 'HH24:MI')
-        END as preferred_time,
+        NULLIF(TRIM(preferred_time::text), '') as preferred_time,
         MD5(CONCAT(
           name, 
           email, 
           phone, 
           COALESCE(notes, ''), 
           COALESCE(preferred_date::text, ''),
-          COALESCE(preferred_time::text, '')
+          COALESCE(NULLIF(TRIM(preferred_time::text), ''), '')
         )) as checksum
       FROM consultations 
       WHERE id = $1`,
@@ -127,13 +124,12 @@ export class SyncService {
     // Format the time properly if it exists
     let preferredTime = consultation.preferred_time;
     if (preferredTime) {
-      // Ensure time is in HH:mm format and handle null/empty values
+      // Convert the PostgreSQL time format (HH:MM:SS) to HH:mm format
       try {
-        // Parse the time string and format it
-        const timeMatch = preferredTime.toString().match(/^(\d{1,2}):(\d{2})$/);
+        const timeMatch = preferredTime.match(/^(\d{2}):(\d{2}):/);
         if (timeMatch) {
           const [_, hours, minutes] = timeMatch;
-          preferredTime = `${hours.padStart(2, '0')}:${minutes}`;
+          preferredTime = `${hours}:${minutes}`;
         } else {
           console.log('Invalid time format:', preferredTime);
           preferredTime = null;
