@@ -63,6 +63,12 @@ export class SuiteCRMService {
         }
       );
 
+      console.log('[SuiteCRM] Auth response:', {
+        status: authResult.status,
+        statusText: authResult.statusText,
+        data: authResult.data
+      });
+
       if (authResult.data?.name === 'Invalid Login') {
         console.error('[SuiteCRM] Authentication failed:', authResult.data.description);
         return null;
@@ -102,7 +108,12 @@ export class SuiteCRMService {
         throw new Error('Authentication failed');
       }
 
-      // Prepare meeting data
+      // Format dates for SuiteCRM (YYYY-MM-DD HH:mm:ss)
+      const formatDate = (date: Date) => {
+        return date.toISOString().replace('T', ' ').split('.')[0];
+      };
+
+      // Prepare meeting data with all required fields
       const setEntryData = {
         session: sessionId,
         module_name: 'Meetings',
@@ -110,12 +121,25 @@ export class SuiteCRMService {
           { name: 'name', value: `Consultation with ${consultationData.name}` },
           { name: 'description', value: `Contact Details:\nName: ${consultationData.name}\nEmail: ${consultationData.email}\nPhone: ${consultationData.phone}\n\nNotes:\n${consultationData.notes || ''}` },
           { name: 'status', value: 'Planned' },
+          { name: 'type', value: 'Consultation' },
           { name: 'duration_hours', value: '1' },
           { name: 'duration_minutes', value: '0' },
-          { name: 'date_start', value: meetingDate.toISOString() },
-          { name: 'date_end', value: endDate.toISOString() }
+          { name: 'date_start', value: formatDate(meetingDate) },
+          { name: 'date_end', value: formatDate(endDate) },
+          { name: 'assigned_user_id', value: this.username }, // Assign to the authenticated user
+          { name: 'parent_type', value: 'Leads' },
+          { name: 'reminder_time', value: -1800 }, // 30 minutes before
+          { name: 'outlook_id', value: '' },
+          { name: 'repeat_type', value: '' },
+          { name: 'repeat_interval', value: '1' },
+          { name: 'repeat_dow', value: '' },
+          { name: 'repeat_until', value: '' },
+          { name: 'repeat_count', value: '' },
+          { name: 'location', value: 'Online' }
         ]
       };
+
+      console.log('[SuiteCRM] Creating meeting with data:', setEntryData);
 
       const postData = {
         method: 'set_entry',
@@ -141,6 +165,11 @@ export class SuiteCRMService {
         }
       );
 
+      console.log('[SuiteCRM] Meeting creation response:', {
+        status: meetingResponse.status,
+        data: meetingResponse.data
+      });
+
       if (meetingResponse.data?.id) {
         console.log('[SuiteCRM] Successfully created meeting with ID:', meetingResponse.data.id);
         return {
@@ -148,6 +177,7 @@ export class SuiteCRMService {
           message: 'Thank you! Your consultation request has been received. Our team will contact you shortly to confirm the details.'
         };
       } else {
+        console.error('[SuiteCRM] Invalid response format from SuiteCRM:', meetingResponse.data);
         throw new Error('Invalid response format from SuiteCRM');
       }
 
