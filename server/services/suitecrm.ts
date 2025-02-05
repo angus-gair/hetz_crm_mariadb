@@ -43,26 +43,15 @@ export class SuiteCRMService {
         throw new Error('Missing required SuiteCRM configuration');
       }
 
-      // Ensure proper URL formatting with protocol
+      // Ensure URL has proper protocol
       this.baseUrl = baseUrl.startsWith('http') ? baseUrl : `http://${baseUrl}`;
       // Remove trailing slash if present
       this.baseUrl = this.baseUrl.replace(/\/$/, '');
 
       console.log('Initializing SuiteCRM with base URL:', this.baseUrl);
-      this.initializeConnection();
 
     } catch (error) {
       console.error('Failed to initialize SuiteCRM service:', error);
-      this.isServerAvailable = false;
-    }
-  }
-
-  private async initializeConnection() {
-    try {
-      console.log('Initializing connection to SuiteCRM...');
-      await this.login();
-    } catch (error) {
-      console.error('Failed to initialize SuiteCRM connection:', error);
       this.isServerAvailable = false;
     }
   }
@@ -74,55 +63,46 @@ export class SuiteCRMService {
       const passwordMd5 = crypto.createHash('md5').update(this.password).digest('hex');
       const loginEndpoint = `${this.baseUrl}/service/v4/rest.php`;
 
-      console.log('Attempting login with credentials:', {
-        username: this.username,
-        url: loginEndpoint,
-        passwordLength: this.password.length
-      });
+      console.log('Attempting login to:', loginEndpoint);
 
-      const response = await axios.post(
-        loginEndpoint,
-        {
-          method: 'login',
-          input_type: 'JSON',
-          response_type: 'JSON',
-          rest_data: {
-            user_auth: {
-              user_name: this.username,
-              password: passwordMd5,
-              version: '4'
-            },
-            application_name: 'CubbyLuxe Integration',
-            name_value_list: []
-          }
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+      const requestData = {
+        method: 'login',
+        input_type: 'JSON',
+        response_type: 'JSON',
+        rest_data: {
+          user_auth: {
+            user_name: this.username,
+            password: passwordMd5,
+            version: '4'
           },
-          timeout: this.timeout,
-          maxRedirects: 5,
-          validateStatus: (status) => status >= 200 && status < 500
+          application_name: 'CubbyLuxe Integration',
+          name_value_list: []
         }
-      );
+      };
 
-      // Log response for debugging
-      console.log('SuiteCRM login response:', {
-        status: response.status,
-        contentType: response.headers['content-type'],
-        data: response.data
+      const response = await axios.post(loginEndpoint, requestData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: this.timeout,
+        maxRedirects: 5
       });
 
-      // Handle potential HTML response with embedded JSON
       let responseData = response.data;
+      console.log('Raw response:', typeof responseData === 'string' ? responseData.substring(0, 500) : responseData);
+
       if (typeof responseData === 'string') {
+        // Try to extract JSON from HTML response
         const jsonMatch = responseData.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
             responseData = JSON.parse(jsonMatch[0]);
           } catch (e) {
-            console.error('Failed to parse JSON from response:', e);
+            console.error('Failed to parse JSON from response:', {
+              error: e,
+              responsePreview: responseData.substring(0, 500)
+            });
             return null;
           }
         }
@@ -135,11 +115,21 @@ export class SuiteCRMService {
 
       this.sessionId = responseData.id;
       this.isServerAvailable = true;
-      console.log('Successfully authenticated with SuiteCRM');
-      return responseData.id;
+      console.log('Successfully obtained session ID:', this.sessionId);
+      return this.sessionId;
 
     } catch (error) {
-      console.error('SuiteCRM login failed:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('SuiteCRM login failed:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          headers: error.response?.headers,
+          url: error.config?.url
+        });
+      } else {
+        console.error('Unexpected error during SuiteCRM login:', error);
+      }
       this.isServerAvailable = false;
       return null;
     }
@@ -208,54 +198,64 @@ export class SuiteCRMService {
 
   async createContact(contactData: ContactData): Promise<{ success: boolean; message: string }> {
     try {
-      if (!this.isServerAvailable) {
-        console.log('Attempting to reconnect to CRM...');
-        await this.initializeConnection();
+      if (!this.sessionId) {
+        await this.login();
+      }
+
+      if (!this.sessionId) {
+        return {
+          success: false,
+          message: 'Unable to connect to CRM system. Your request has been logged and will be processed manually.'
+        };
       }
 
       console.log('Creating contact in SuiteCRM:', {
-        email: contactData.email,
-        name: contactData.name
+        name: contactData.name,
+        email: contactData.email
       });
 
       const [firstName, ...lastNameParts] = contactData.name.split(' ');
       const lastName = lastNameParts.join(' ') || '-';
 
-      const contact = await this.makeRequest('set_entry', {
-        module_name: 'Contacts',
-        name_value_list: [
-          { name: 'first_name', value: firstName },
-          { name: 'last_name', value: lastName },
-          { name: 'email1', value: contactData.email },
-          { name: 'phone_mobile', value: contactData.phone },
-          { name: 'description', value: contactData.notes || '' },
-          { name: 'lead_source', value: 'Web Site' }
-        ]
+      const endpoint = `${this.baseUrl}/service/v4/rest.php`;
+      const requestData = {
+        method: 'set_entry',
+        input_type: 'JSON',
+        response_type: 'JSON',
+        rest_data: {
+          session: this.sessionId,
+          module_name: 'Contacts',
+          name_value_list: [
+            { name: 'first_name', value: firstName },
+            { name: 'last_name', value: lastName },
+            { name: 'email1', value: contactData.email },
+            { name: 'phone_mobile', value: contactData.phone },
+            { name: 'description', value: contactData.notes || '' },
+            { name: 'lead_source', value: 'Web Site' }
+          ]
+        }
+      };
+
+      const response = await axios.post(endpoint, requestData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: this.timeout
       });
 
-      if (!contact?.id) {
-        console.error('Failed to create contact - no ID returned');
+      console.log('Contact creation response:', response.data);
+
+      if (!response.data?.id) {
         return {
           success: false,
           message: 'Your request has been received and will be processed manually by our team.'
         };
       }
 
-      if (contactData.preferredDate) {
-        try {
-          await this.createMeeting(contact.id, contactData);
-        } catch (meetingError) {
-          console.error('Failed to create meeting but contact was created:', meetingError);
-          return {
-            success: true,
-            message: 'Your contact information has been saved. Our team will contact you to schedule the consultation.'
-          };
-        }
-      }
-
       return {
         success: true,
-        message: 'Your consultation request has been received and a meeting has been scheduled. We will contact you shortly to confirm the details.'
+        message: 'Your consultation request has been received. Our team will contact you shortly to confirm the details.'
       };
 
     } catch (error) {
@@ -266,7 +266,6 @@ export class SuiteCRMService {
       };
     }
   }
-
   private async createMeeting(contactId: string, contactData: ContactData): Promise<void> {
     if (!contactData.preferredDate) return;
 
