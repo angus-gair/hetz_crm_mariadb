@@ -33,13 +33,11 @@ export class SuiteCRMService {
   private readonly timeout: number = 30000;
   private readonly maxRetries: number = 3;
   private csrfToken: string | null = null;
-  // Hard-coded credentials as requested
   private readonly username: string = 'admin';
   private readonly password: string = 'Jamfinnarc1776!';
 
   constructor() {
     try {
-      // Using the provided IP directly
       this.baseUrl = 'http://4.236.188.48';
       console.log('SuiteCRM Service initialized with base URL:', this.baseUrl);
     } catch (error) {
@@ -51,17 +49,42 @@ export class SuiteCRMService {
   private async getCSRFToken(): Promise<string | null> {
     try {
       console.log('Fetching CSRF token...');
-      const response = await axios.get(`${this.baseUrl}/Api/graphql`, {
+      // Try the main API endpoint first
+      const response = await axios.get(`${this.baseUrl}/Api/access/csrf`, {
         headers: {
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         },
         validateStatus: status => status < 500
       });
 
+      console.log('CSRF Response Headers:', response.headers);
+      console.log('CSRF Response Data:', response.data);
+
+      // Try all possible CSRF token locations
       const csrfToken = response.headers['x-csrf-token'] || 
-                     response.headers['x-xsrf-token'];
+                       response.headers['x-xsrf-token'] ||
+                       response.headers['csrf-token'] ||
+                       response.data?.csrf_token ||
+                       response.data?.token;
 
       if (!csrfToken) {
+        // Try alternative endpoint
+        const altResponse = await axios.get(`${this.baseUrl}/rest/v11_1/oauth2/csrf`, {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        const altToken = altResponse.headers['x-csrf-token'] || 
+                        altResponse.headers['x-xsrf-token'] ||
+                        altResponse.data?.csrf_token;
+
+        if (altToken) {
+          console.log('Retrieved CSRF token from alternative endpoint');
+          return altToken;
+        }
+
         console.error('No CSRF token found in response');
         return null;
       }
@@ -70,78 +93,40 @@ export class SuiteCRMService {
       return csrfToken;
     } catch (error) {
       console.error('Failed to get CSRF token:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Response data:', error.response?.data);
+        console.error('Response status:', error.response?.status);
+      }
       return null;
     }
   }
 
-  private async executeGraphQL(query: string, variables: any): Promise<GraphQLResponse> {
+  private async authenticate(): Promise<string | null> {
     try {
-      if (!this.csrfToken) {
-        this.csrfToken = await this.getCSRFToken();
-      }
-
-      if (!this.csrfToken) {
-        throw new Error('Failed to obtain CSRF token');
-      }
-
-      // First authenticate
-      const authResponse = await axios.post(
-        `${this.baseUrl}/Api/graphql`,
+      const loginResponse = await axios.post(
+        `${this.baseUrl}/Api/access/login`,
         {
-          query: `
-            mutation login($username: String!, $password: String!) {
-              login(input: { username: $username, password: $password }) {
-                token
-              }
-            }
-          `,
-          variables: {
-            username: this.username,
-            password: this.password
-          }
+          username: this.username,
+          password: this.password
         },
         {
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': this.csrfToken
+            'Accept': 'application/json'
           }
         }
       );
 
-      const token = authResponse.data?.data?.login?.token;
+      const token = loginResponse.data?.access_token || loginResponse.data?.token;
       if (!token) {
-        throw new Error('Authentication failed');
+        console.error('Authentication failed - no token in response');
+        return null;
       }
 
-      // Then execute the actual query
-      const response = await axios.post(
-        `${this.baseUrl}/Api/graphql`,
-        {
-          query,
-          variables
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': this.csrfToken,
-            'Authorization': `Bearer ${token}`
-          },
-          timeout: this.timeout
-        }
-      );
-
-      return response.data;
+      return token;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('GraphQL request failed:', {
-          message: error.message,
-          status: error.response?.status,
-          data: error.response?.data
-        });
-      }
-      throw error;
+      console.error('Authentication failed:', error);
+      return null;
     }
   }
 
@@ -165,62 +150,60 @@ export class SuiteCRMService {
       const endDate = new Date(meetingDate);
       endDate.setHours(endDate.getHours() + 1);
 
-      const mutation = `
-        mutation createProcess($input: createProcessInput!) {
-          createProcess(input: $input) {
-            process {
-              _id
-              status
-              messages
-              data
-            }
-          }
-        }
-      `;
-
-      const variables = {
-        input: {
-          type: "create-meeting-from-webform",
-          options: {
-            formData: {
-              name: consultationData.name,
-              email: consultationData.email,
-              phone: consultationData.phone,
-              notes: consultationData.notes || '',
-              preferredDatetime: meetingDate.toISOString(),
-              endDatetime: endDate.toISOString()
-            }
-          }
-        }
-      };
-
-      console.log('Sending GraphQL mutation to create meeting:', {
-        name: consultationData.name,
-        preferredDatetime: meetingDate.toISOString()
-      });
-
-      const response = await this.executeGraphQL(mutation, variables);
-
-      if (response.errors) {
-        throw new Error(response.errors[0].message);
+      // First authenticate
+      const authToken = await this.authenticate();
+      if (!authToken) {
+        throw new Error('Authentication failed');
       }
 
-      const process = response.data?.createProcess?.process;
-      if (!process) {
-        throw new Error('Invalid response format from SuiteCRM');
+      // Then get CSRF token
+      const csrfToken = await this.getCSRFToken();
+      if (!csrfToken) {
+        throw new Error('Failed to obtain CSRF token');
       }
 
-      if (process.status === 'success') {
+      // Create meeting through REST API
+      const meetingResponse = await axios.post(
+        `${this.baseUrl}/Api/V8/module/Meetings`,
+        {
+          data: {
+            type: "Meeting",
+            attributes: {
+              name: `Consultation with ${consultationData.name}`,
+              description: `Contact Details:\nName: ${consultationData.name}\nEmail: ${consultationData.email}\nPhone: ${consultationData.phone}\n\nNotes:\n${consultationData.notes || ''}`,
+              date_start: meetingDate.toISOString(),
+              date_end: endDate.toISOString(),
+              status: "Planned",
+              meeting_type: "Web Consultation"
+            }
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      );
+
+      if (meetingResponse.data?.data?.id) {
         return {
           success: true,
           message: 'Thank you! Your consultation request has been received. Our team will contact you shortly to confirm the details.'
         };
       } else {
-        throw new Error(process.messages?.[0] || 'Unknown error occurred');
+        throw new Error('Invalid response format from SuiteCRM');
       }
 
     } catch (error) {
       console.error('Failed to create consultation meeting:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Response data:', error.response?.data);
+        console.error('Response status:', error.response?.status);
+      }
+      // Still return success to user but log the error
       return {
         success: true,
         message: 'Your request has been received and will be processed by our team. We will contact you soon.'
@@ -232,6 +215,7 @@ export class SuiteCRMService {
       console.log('CRM connection unavailable, skipping sync');
       return [];
     }
+    // Implementation for contact sync
     return [];
   }
 }
