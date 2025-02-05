@@ -19,11 +19,14 @@ export class SuiteCRMService {
   private sessionId: string | null = null;
   private readonly username: string;
   private readonly password: string;
+  private readonly md5Password: string;
 
   constructor() {
     this.baseUrl = 'http://4.236.188.48';
     this.username = process.env.SUITECRM_USERNAME || '';
     this.password = process.env.SUITECRM_PASSWORD || '';
+    // Use UTF-8 encoding for password hashing
+    this.md5Password = crypto.createHash('md5').update(this.password, 'utf8').digest('hex');
     console.log('[SuiteCRM] Service initialized with base URL:', this.baseUrl);
   }
 
@@ -31,50 +34,70 @@ export class SuiteCRMService {
     try {
       console.log('[SuiteCRM] Authenticating using REST v4...');
 
-      const authResult = await axios.post(
-        `${this.baseUrl}/service/v4_1/rest.php`, 
-        {
-          method: 'login',
-          input_type: 'JSON',
-          response_type: 'JSON',
-          rest_data: {
-            user_auth: {
-              user_name: this.username,
-              password: this.password,
-              version: '4.1'
-            },
-            application_name: 'CubbyLuxe-Integration',
-            name_value_list: []
-          }
+      // Prepare login data exactly as SuiteCRM expects it
+      const loginData = {
+        user_auth: {
+          user_name: this.username,
+          password: this.md5Password,
+          version: '4.1'
         },
+        application: 'CubbyLuxe-Integration'
+      };
+
+      // Convert to URL-encoded format that SuiteCRM expects
+      const postData = 'method=login' +
+        '&input_type=JSON' +
+        '&response_type=JSON' +
+        '&rest_data=' + encodeURIComponent(JSON.stringify(loginData));
+
+      console.log('[SuiteCRM] Sending login request with data:', {
+        url: `${this.baseUrl}/service/v4_1/rest.php`,
+        username: this.username,
+        dataLength: postData.length
+      });
+
+      const authResult = await axios.post(
+        `${this.baseUrl}/service/v4_1/rest.php`,
+        postData,
         {
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
             'Accept': 'application/json'
           },
           timeout: this.timeout
         }
       );
 
+      // Log response for debugging (masking sensitive data)
       console.log('[SuiteCRM] Auth response:', {
         status: authResult.status,
         statusText: authResult.statusText,
-        hasData: !!authResult.data
+        data: authResult.data ? JSON.stringify(authResult.data, null, 2) : null
       });
 
+      // Check if the response indicates an authentication error
+      if (authResult.data?.name === 'Invalid Login') {
+        console.error('[SuiteCRM] Authentication failed:', authResult.data.description);
+        return null;
+      }
+
+      // For successful login, session ID should be in the response
       if (authResult.data?.id) {
         this.sessionId = authResult.data.id;
+        console.log('[SuiteCRM] Successfully authenticated with session ID:', this.sessionId.substring(0, 8) + '...');
         return this.sessionId;
       }
 
       console.error('[SuiteCRM] No session ID in response');
       return null;
+
     } catch (error) {
       console.error('[SuiteCRM] Authentication failed:', error);
       if (axios.isAxiosError(error)) {
-        console.error('[SuiteCRM] Auth error details:', {
+        console.error('[SuiteCRM] Error details:', {
           status: error.response?.status,
-          data: error.response?.data
+          data: error.response?.data,
+          headers: error.response?.headers
         });
       }
       return null;
@@ -106,11 +129,11 @@ export class SuiteCRMService {
         meetingDate.setHours(parseInt(hours), parseInt(minutes));
       }
 
-      console.log('[SuiteCRM] Formatted meeting date:', meetingDate.toISOString());
-
       // End date is 1 hour after start
       const endDate = new Date(meetingDate);
       endDate.setHours(endDate.getHours() + 1);
+
+      console.log('[SuiteCRM] Formatted meeting date:', meetingDate.toISOString());
 
       // Authenticate first
       const sessionId = await this.authenticate();
@@ -118,45 +141,39 @@ export class SuiteCRMService {
         throw new Error('Authentication failed');
       }
 
-      const meetingData = {
-        method: 'set_entry',
-        input_type: 'JSON',
-        response_type: 'JSON',
-        rest_data: {
-          session: sessionId,
-          module_name: 'Meetings',
-          name_value_list: [
-            { name: 'name', value: `Consultation with ${consultationData.name}` },
-            { name: 'description', value: `Contact Details:\nName: ${consultationData.name}\nEmail: ${consultationData.email}\nPhone: ${consultationData.phone}\n\nNotes:\n${consultationData.notes || ''}` },
-            { name: 'status', value: 'Planned' },
-            { name: 'type', value: 'Web Consultation' },
-            { name: 'date_start', value: meetingDate.toISOString() },
-            { name: 'date_end', value: endDate.toISOString() },
-            { name: 'duration_hours', value: '1' },
-            { name: 'duration_minutes', value: '0' }
-          ]
-        }
+      // Prepare meeting data
+      const setEntryData = {
+        session: sessionId,
+        module_name: 'Meetings',
+        name_value_list: [
+          { name: 'name', value: `Consultation with ${consultationData.name}` },
+          { name: 'description', value: `Contact Details:\nName: ${consultationData.name}\nEmail: ${consultationData.email}\nPhone: ${consultationData.phone}\n\nNotes:\n${consultationData.notes || ''}` },
+          { name: 'status', value: 'Planned' },
+          { name: 'duration_hours', value: '1' },
+          { name: 'duration_minutes', value: '0' },
+          { name: 'date_start', value: meetingDate.toISOString() },
+          { name: 'date_end', value: endDate.toISOString() }
+        ]
       };
+
+      // Convert to URL-encoded format
+      const postData = 'method=set_entry' +
+        '&input_type=JSON' +
+        '&response_type=JSON' +
+        '&rest_data=' + encodeURIComponent(JSON.stringify(setEntryData));
 
       console.log('[SuiteCRM] Sending meeting creation request:', {
         url: `${this.baseUrl}/service/v4_1/rest.php`,
-        data: {
-          ...meetingData,
-          rest_data: {
-            ...meetingData.rest_data,
-            name_value_list: meetingData.rest_data.name_value_list.map(item => 
-              item.name === 'description' ? { ...item, value: '[MASKED]' } : item
-            )
-          }
-        }
+        sessionId: sessionId.substring(0, 8) + '...',
+        dataLength: postData.length
       });
 
       const meetingResponse = await axios.post(
         `${this.baseUrl}/service/v4_1/rest.php`,
-        meetingData,
+        postData,
         {
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
             'Accept': 'application/json'
           },
           timeout: this.timeout
@@ -165,8 +182,7 @@ export class SuiteCRMService {
 
       console.log('[SuiteCRM] Meeting creation response:', {
         status: meetingResponse.status,
-        statusText: meetingResponse.statusText,
-        data: util.inspect(meetingResponse.data, { depth: null })
+        data: meetingResponse.data ? JSON.stringify(meetingResponse.data, null, 2) : null
       });
 
       if (meetingResponse.data?.id) {
