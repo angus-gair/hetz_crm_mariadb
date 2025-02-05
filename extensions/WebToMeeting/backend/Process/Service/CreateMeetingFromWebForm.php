@@ -109,7 +109,7 @@ class CreateMeetingFromWebForm implements ProcessHandlerInterface
 
             // Set date/time
             $startDate = new \DateTime($formData['preferredDatetime']);
-            $endDate = isset($formData['endDatetime']) 
+            $endDate = isset($formData['endDatetime'])
                 ? new \DateTime($formData['endDatetime'])
                 : (clone $startDate)->modify('+1 hour');
 
