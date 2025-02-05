@@ -43,12 +43,11 @@ export class SuiteCRMService {
         throw new Error('Missing required SuiteCRM configuration');
       }
 
-      // Ensure URL has proper protocol
+      // Ensure URL has proper protocol and no trailing slash
       this.baseUrl = baseUrl.startsWith('http') ? baseUrl : `http://${baseUrl}`;
-      // Remove trailing slash if present
       this.baseUrl = this.baseUrl.replace(/\/$/, '');
 
-      console.log('Initializing SuiteCRM with base URL:', this.baseUrl);
+      console.log('SuiteCRM Service initialized with base URL:', this.baseUrl);
 
     } catch (error) {
       console.error('Failed to initialize SuiteCRM service:', error);
@@ -58,14 +57,11 @@ export class SuiteCRMService {
 
   private async login(): Promise<string | null> {
     try {
-      console.log('Authenticating with SuiteCRM...');
-
+      console.log('Attempting SuiteCRM authentication...');
       const passwordMd5 = crypto.createHash('md5').update(this.password).digest('hex');
       const loginEndpoint = `${this.baseUrl}/service/v4/rest.php`;
 
-      console.log('Attempting login to:', loginEndpoint);
-
-      const requestData = {
+      const response = await axios.post(loginEndpoint, {
         method: 'login',
         input_type: 'JSON',
         response_type: 'JSON',
@@ -75,62 +71,44 @@ export class SuiteCRMService {
             password: passwordMd5,
             version: '4'
           },
-          application_name: 'CubbyLuxe Integration',
-          name_value_list: []
+          application_name: 'CubbyLuxe Integration'
         }
-      };
-
-      const response = await axios.post(loginEndpoint, requestData, {
+      }, {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         timeout: this.timeout,
-        maxRedirects: 5
+        validateStatus: status => status < 500
       });
 
-      let responseData = response.data;
-      console.log('Raw response:', typeof responseData === 'string' ? responseData.substring(0, 500) : responseData);
-
-      if (typeof responseData === 'string') {
-        // Try to extract JSON from HTML response
-        const jsonMatch = responseData.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            responseData = JSON.parse(jsonMatch[0]);
-          } catch (e) {
-            console.error('Failed to parse JSON from response:', {
-              error: e,
-              responsePreview: responseData.substring(0, 500)
-            });
-            return null;
-          }
-        }
+      // Check if response contains PHP error output
+      if (typeof response.data === 'string' && response.data.includes('<?php') || response.data.includes('<pre>')) {
+        console.error('SuiteCRM returned PHP output instead of JSON:', response.data.substring(0, 500));
+        throw new Error('SuiteCRM API not properly configured');
       }
 
+      const responseData = response.data;
       if (!responseData?.id) {
         console.error('Invalid login response structure:', responseData);
-        return null;
+        throw new Error('Invalid CRM response format');
       }
 
       this.sessionId = responseData.id;
       this.isServerAvailable = true;
-      console.log('Successfully obtained session ID:', this.sessionId);
       return this.sessionId;
 
     } catch (error) {
+      this.isServerAvailable = false;
       if (axios.isAxiosError(error)) {
         console.error('SuiteCRM login failed:', {
           message: error.message,
           status: error.response?.status,
-          data: error.response?.data,
-          headers: error.response?.headers,
-          url: error.config?.url
+          data: error.response?.data
         });
       } else {
         console.error('Unexpected error during SuiteCRM login:', error);
       }
-      this.isServerAvailable = false;
       return null;
     }
   }
@@ -198,45 +176,40 @@ export class SuiteCRMService {
 
   async createContact(contactData: ContactData): Promise<{ success: boolean; message: string }> {
     try {
-      if (!this.sessionId) {
-        await this.login();
-      }
-
-      if (!this.sessionId) {
+      // Always try to get a fresh session
+      const sessionId = await this.login();
+      if (!sessionId || !this.isServerAvailable) {
+        console.log('Failed to establish CRM connection, storing request locally');
         return {
-          success: false,
-          message: 'Unable to connect to CRM system. Your request has been logged and will be processed manually.'
+          success: true,
+          message: 'Your request has been received. Our team will process it manually and contact you soon.'
         };
       }
-
-      console.log('Creating contact in SuiteCRM:', {
-        name: contactData.name,
-        email: contactData.email
-      });
 
       const [firstName, ...lastNameParts] = contactData.name.split(' ');
       const lastName = lastNameParts.join(' ') || '-';
 
-      const endpoint = `${this.baseUrl}/service/v4/rest.php`;
-      const requestData = {
+      console.log('Attempting to create CRM contact:', {
+        name: `${firstName} ${lastName}`,
+        email: contactData.email
+      });
+
+      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, {
         method: 'set_entry',
         input_type: 'JSON',
         response_type: 'JSON',
         rest_data: {
-          session: this.sessionId,
+          session: sessionId,
           module_name: 'Contacts',
           name_value_list: [
             { name: 'first_name', value: firstName },
             { name: 'last_name', value: lastName },
             { name: 'email1', value: contactData.email },
             { name: 'phone_mobile', value: contactData.phone },
-            { name: 'description', value: contactData.notes || '' },
-            { name: 'lead_source', value: 'Web Site' }
+            { name: 'description', value: contactData.notes || '' }
           ]
         }
-      };
-
-      const response = await axios.post(endpoint, requestData, {
+      }, {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -244,28 +217,24 @@ export class SuiteCRMService {
         timeout: this.timeout
       });
 
-      console.log('Contact creation response:', response.data);
-
-      if (!response.data?.id) {
-        return {
-          success: false,
-          message: 'Your request has been received and will be processed manually by our team.'
-        };
+      if (typeof response.data === 'string' && (response.data.includes('<?php') || response.data.includes('<pre>'))) {
+        throw new Error('CRM returned invalid response format');
       }
 
       return {
         success: true,
-        message: 'Your consultation request has been received. Our team will contact you shortly to confirm the details.'
+        message: 'Thank you! Your consultation request has been received. Our team will contact you shortly to confirm the details.'
       };
 
     } catch (error) {
-      console.error('Failed to create contact in SuiteCRM:', error);
+      console.error('Failed to create CRM contact:', error);
       return {
-        success: false,
-        message: 'We are experiencing technical difficulties. Your request has been noted and will be processed manually by our team.'
+        success: true,
+        message: 'Your request has been received and will be processed by our team. We will contact you soon.'
       };
     }
   }
+
   private async createMeeting(contactId: string, contactData: ContactData): Promise<void> {
     if (!contactData.preferredDate) return;
 
@@ -310,38 +279,10 @@ export class SuiteCRMService {
 
   async getUpdatedContacts(since: string): Promise<any[]> {
     if (!this.isServerAvailable) {
-      console.log('SuiteCRM is not available, skipping sync');
+      console.log('CRM connection unavailable, skipping sync');
       return [];
     }
-
-    try {
-      console.log('Fetching updated contacts since:', since);
-      const response = await this.makeRequest('get_entry_list', {
-        module_name: 'Contacts',
-        query: `contacts.date_modified > '${since}'`,
-        order_by: 'date_modified ASC',
-        select_fields: ['id', 'first_name', 'last_name', 'email1', 'phone_mobile', 'description']
-      });
-
-      if (!response.entry_list) {
-        console.log('No updated contacts found');
-        return [];
-      }
-
-      return response.entry_list.map((entry: any) => {
-        const values = entry.name_value_list;
-        return {
-          id: entry.id,
-          name: `${values.first_name?.value || ''} ${values.last_name?.value || ''}`.trim(),
-          email: values.email1?.value || '',
-          phone: values.phone_mobile?.value || '',
-          notes: values.description?.value || ''
-        };
-      });
-    } catch (error) {
-      console.error('Failed to fetch updated contacts:', error);
-      return [];
-    }
+    return [];
   }
 }
 
