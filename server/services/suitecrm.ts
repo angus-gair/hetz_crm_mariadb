@@ -75,7 +75,12 @@ export class SuiteCRMService {
   private validateResponse(response: any): any {
     if (typeof response.data === 'string') {
       // Log raw response for debugging
-      console.log('Raw SuiteCRM response:', response.data.substring(0, 200));
+      console.log('SuiteCRM Raw Response:', {
+        data: response.data.substring(0, 500),
+        status: response.status,
+        headers: response.headers,
+        endpoint: response.config?.url
+      });
 
       // Check if response is HTML
       if (this.isHTMLResponse(response.data)) {
@@ -84,18 +89,33 @@ export class SuiteCRMService {
         throw new Error('SuiteCRM returned HTML instead of JSON - server may be misconfigured');
       }
 
-      // Check if response contains PHP errors
-      if (response.data.includes('Fatal error') ||
+      // Enhanced PHP error detection with specific error types
+      if (response.data.includes('Fatal error: Cannot declare class LanguageManager')) {
+        console.error('SuiteCRM Class Loading Error:', {
+          error: response.data,
+          timestamp: new Date().toISOString(),
+          endpoint: response.config?.url
+        });
+        this.isServerAvailable = false;
+        throw new Error('SuiteCRM server has a class loading conflict. Please clear the server cache and verify the installation.');
+      } else if (response.data.includes('Fatal error') ||
           response.data.includes('Warning') ||
           response.data.includes('Notice')) {
-        console.error('SuiteCRM returned PHP error:', response.data);
+        console.error('SuiteCRM PHP Error:', {
+          error: response.data,
+          timestamp: new Date().toISOString(),
+          endpoint: response.config?.url
+        });
         this.isServerAvailable = false;
-        throw new Error('SuiteCRM server is experiencing technical issues');
+        throw new Error('SuiteCRM server is experiencing PHP configuration issues. Please check server logs.');
       }
 
       // Try to parse JSON if string
       if (!this.isValidJSON(response.data)) {
-        console.error('Invalid JSON response:', response.data);
+        console.error('Invalid JSON Response:', {
+          response: response.data.substring(0, 200),
+          contentType: response.headers['content-type']
+        });
         this.isServerAvailable = false;
         throw new Error('Invalid response format from SuiteCRM');
       }
@@ -145,10 +165,10 @@ export class SuiteCRMService {
 
   async createContact(contactData: ContactData): Promise<{ success: boolean; message: string }> {
     if (!this.isServerAvailable) {
-      console.log('SuiteCRM is not available, storing locally only');
+      console.log('SuiteCRM is not available, storing locally for future sync');
       return {
         success: true,
-        message: 'Your consultation request has been saved. We will contact you shortly.'
+        message: 'Your consultation request has been saved and will be processed as soon as possible. Our team will contact you shortly.'
       };
     }
 
@@ -156,8 +176,34 @@ export class SuiteCRMService {
       const [firstName, ...lastNameParts] = contactData.name.split(' ');
       const lastName = lastNameParts.join(' ') || '-';
 
-      console.log('Creating records in SuiteCRM for:', contactData.email);
+      console.log('Attempting to create records in SuiteCRM for:', contactData.email);
 
+      // Attempt to create records in SuiteCRM
+      const result = await this.attemptCreateCRMRecords(contactData, firstName, lastName);
+
+      return {
+        success: true,
+        message: 'Your consultation has been scheduled successfully. We will contact you shortly to confirm the details.'
+      };
+
+    } catch (error) {
+      console.error('Failed to create records in SuiteCRM:', error);
+      this.isServerAvailable = false;
+
+      // Return a user-friendly message while ensuring data is stored locally
+      return {
+        success: true,
+        message: 'Your consultation request has been received. Our team will process it and contact you shortly.'
+      };
+    }
+  }
+
+  private async attemptCreateCRMRecords(
+    contactData: ContactData,
+    firstName: string,
+    lastName: string
+  ): Promise<void> {
+    try {
       // 1. Create Account record
       const account = await this.makeRequest('set_entry', {
         module_name: 'Accounts',
@@ -174,7 +220,7 @@ export class SuiteCRMService {
         throw new Error('Failed to create account record');
       }
 
-      // 2. Create Contact record (now linked to Account)
+      // 2. Create Contact record
       const contact = await this.makeRequest('set_entry', {
         module_name: 'Contacts',
         name_value_list: {
@@ -192,7 +238,7 @@ export class SuiteCRMService {
         throw new Error('Failed to create contact record');
       }
 
-      // Link Contact to Account
+      // 3. Link Contact to Account
       await this.makeRequest('set_relationship', {
         module_name: 'Accounts',
         module_id: account.id,
@@ -200,8 +246,8 @@ export class SuiteCRMService {
         related_ids: [contact.id]
       });
 
-      // 3. Create Lead record
-      const lead = await this.makeRequest('set_entry', {
+      // 4. Create Lead record
+      await this.makeRequest('set_entry', {
         module_name: 'Leads',
         name_value_list: {
           first_name: firstName,
@@ -216,9 +262,9 @@ export class SuiteCRMService {
         }
       });
 
-      // 4. Create Note for additional information
+      // 5. Add consultation notes if provided
       if (contactData.notes) {
-        const note = await this.makeRequest('set_entry', {
+        await this.makeRequest('set_entry', {
           module_name: 'Notes',
           name_value_list: {
             name: 'Initial Consultation Notes',
@@ -229,62 +275,60 @@ export class SuiteCRMService {
         });
       }
 
-      // 5. Create meeting if date/time provided
+      // 6. Schedule meeting if date/time provided
       if (contactData.preferredDate && contactData.preferredTime) {
-        console.log('Creating meeting record');
-        const meetingDate = new Date(contactData.preferredDate);
-        const [hours, minutes] = contactData.preferredTime.split(':');
-        meetingDate.setHours(parseInt(hours), parseInt(minutes));
-
-        const endDate = new Date(meetingDate);
-        endDate.setHours(endDate.getHours() + 1);
-
-        const meeting = await this.makeRequest('set_entry', {
-          module_name: 'Meetings',
-          name_value_list: {
-            name: `Cubby House Consultation - ${contactData.name}`,
-            date_start: meetingDate.toISOString(),
-            date_end: endDate.toISOString(),
-            duration_hours: '1',
-            duration_minutes: '0',
-            status: 'Planned',
-            description: contactData.notes || '',
-            location: 'Online/Phone',
-            parent_type: 'Accounts',
-            parent_id: account.id
-          }
-        });
-
-        if (meeting.id) {
-          // Link meeting to both contact and account
-          await this.makeRequest('set_relationship', {
-            module_name: 'Meetings',
-            module_id: meeting.id,
-            link_field_name: 'contacts',
-            related_ids: [contact.id]
-          });
-
-          await this.makeRequest('set_relationship', {
-            module_name: 'Meetings',
-            module_id: meeting.id,
-            link_field_name: 'accounts',
-            related_ids: [account.id]
-          });
-        }
+        await this.createMeetingRecord(contactData, account.id, contact.id);
       }
-
-      return {
-        success: true,
-        message: 'Your consultation has been scheduled successfully. We will contact you shortly to confirm the details.'
-      };
-
     } catch (error) {
-      console.error('Failed to create records in SuiteCRM:', error);
-      this.isServerAvailable = false;
-      return {
-        success: true, // Return success since data is stored locally
-        message: 'Your consultation request has been received and will be processed shortly.'
-      };
+      console.error('Error in attemptCreateCRMRecords:', error);
+      throw error;
+    }
+  }
+
+  private async createMeetingRecord(
+    contactData: ContactData,
+    accountId: string,
+    contactId: string
+  ): Promise<void> {
+    console.log('Creating meeting record');
+    const meetingDate = new Date(contactData.preferredDate!);
+    const [hours, minutes] = contactData.preferredTime!.split(':');
+    meetingDate.setHours(parseInt(hours), parseInt(minutes));
+
+    const endDate = new Date(meetingDate);
+    endDate.setHours(endDate.getHours() + 1);
+
+    const meeting = await this.makeRequest('set_entry', {
+      module_name: 'Meetings',
+      name_value_list: {
+        name: `Cubby House Consultation - ${contactData.name}`,
+        date_start: meetingDate.toISOString(),
+        date_end: endDate.toISOString(),
+        duration_hours: '1',
+        duration_minutes: '0',
+        status: 'Planned',
+        description: contactData.notes || '',
+        location: 'Online/Phone',
+        parent_type: 'Accounts',
+        parent_id: accountId
+      }
+    });
+
+    if (meeting.id) {
+      // Link meeting to both contact and account
+      await this.makeRequest('set_relationship', {
+        module_name: 'Meetings',
+        module_id: meeting.id,
+        link_field_name: 'contacts',
+        related_ids: [contactId]
+      });
+
+      await this.makeRequest('set_relationship', {
+        module_name: 'Meetings',
+        module_id: meeting.id,
+        link_field_name: 'accounts',
+        related_ids: [accountId]
+      });
     }
   }
 
