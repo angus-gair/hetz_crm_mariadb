@@ -40,11 +40,11 @@ router.post('/schedule-consultation', async (req, res) => {
 
       let syncError = null;
       try {
-        // Attempt immediate sync
+        // Attempt immediate sync to SuiteCRM
         await syncService.syncConsultationToCRM(localId);
-        console.log('5. Successfully synced with CRM');
+        console.log('5. Successfully synced with SuiteCRM');
       } catch (syncErr) {
-        console.error('5. CRM sync failed:', syncErr);
+        console.error('5. SuiteCRM sync failed:', syncErr);
         syncError = syncErr;
       }
 

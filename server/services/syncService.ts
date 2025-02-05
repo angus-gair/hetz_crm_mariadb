@@ -3,7 +3,7 @@ import { query } from '../database';
 
 interface SyncRecord {
   id: number;
-  direction: 'mysql_to_crm' | 'crm_to_mysql';
+  direction: 'local_to_crm' | 'crm_to_local';
   entity_type: string;
   entity_id: number;
   status: 'pending' | 'success' | 'failed' | 'dead_letter';
@@ -11,16 +11,13 @@ interface SyncRecord {
   error?: string;
   last_attempt: Date;
   checksum?: string;
-  last_sync_timestamp?: string;
 }
 
-// Enhanced sync service with improved error handling and monitoring
 export class SyncService {
   private readonly MAX_ATTEMPTS = 3;
   private readonly BATCH_SIZE = 10;
   private readonly DEAD_LETTER_THRESHOLD = 5;
 
-  // Main sync method remains unchanged
   async syncConsultationToCRM(consultationId: number): Promise<void> {
     console.log(`Starting sync process for consultation ID: ${consultationId}`);
 
@@ -32,19 +29,19 @@ export class SyncService {
       }
 
       const consultation = consultations[0];
-
-      // Validate consultation data before proceeding
       this.validateConsultationData(consultation);
-
       await this.validateAndCreateSyncRecord(consultationId, consultation);
 
-      // Enhanced server validation
-      if (!await this.validateCRMConnection()) {
-        throw new Error('CRM server validation failed - check server logs for LanguageManager errors');
-      }
-
       // Attempt sync with improved error context
-      const result = await this.attemptCRMSync(consultation);
+      const result = await suiteCRMService.createConsultationMeeting({
+        name: consultation.name,
+        email: consultation.email,
+        phone: consultation.phone,
+        notes: consultation.notes,
+        preferredDate: consultation.preferred_date,
+        preferredTime: consultation.preferred_time
+      });
+
       await this.handleSyncResult(consultationId, result);
 
     } catch (error) {
@@ -86,14 +83,14 @@ export class SyncService {
       `SELECT 
         id, name, email, phone, notes,
         preferred_date,
-        NULLIF(TRIM(preferred_time::text), '') as preferred_time,
+        TO_CHAR(preferred_time, 'HH24:MI') as preferred_time,
         MD5(CONCAT(
           name, 
           email, 
           phone, 
           COALESCE(notes, ''), 
           COALESCE(preferred_date::text, ''),
-          COALESCE(NULLIF(TRIM(preferred_time::text), ''), '')
+          COALESCE(preferred_time::text, '')
         )) as checksum
       FROM consultations 
       WHERE id = $1`,
@@ -111,54 +108,17 @@ export class SyncService {
   }
 
   private async validateAndCreateSyncRecord(consultationId: number, consultation: any) {
-    // Create sync record with checksum
     await this.createSyncRecord({
-      direction: 'mysql_to_crm',
+      direction: 'local_to_crm',
       entity_type: 'consultation',
       entity_id: consultationId,
       checksum: consultation.checksum
     });
   }
 
-  private async attemptCRMSync(consultation: any) {
-    // Format the time properly if it exists
-    let preferredTime = consultation.preferred_time;
-    if (preferredTime) {
-      // Convert the PostgreSQL time format (HH:MM:SS) to HH:mm format
-      try {
-        const timeMatch = preferredTime.match(/^(\d{2}):(\d{2}):/);
-        if (timeMatch) {
-          const [_, hours, minutes] = timeMatch;
-          preferredTime = `${hours}:${minutes}`;
-        } else {
-          console.log('Invalid time format:', preferredTime);
-          preferredTime = null;
-        }
-      } catch (error) {
-        console.error('Error formatting time:', error);
-        preferredTime = null;
-      }
-    }
-
-    console.log('Attempting CRM sync with formatted data:', {
-      name: consultation.name,
-      preferredDate: consultation.preferred_date,
-      preferredTime
-    });
-
-    return await suiteCRMService.createContact({
-      name: consultation.name,
-      email: consultation.email,
-      phone: consultation.phone,
-      notes: consultation.notes,
-      preferredDate: consultation.preferred_date ? new Date(consultation.preferred_date).toISOString() : undefined,
-      preferredTime: preferredTime || undefined
-    });
-  }
-
   private async handleSyncResult(consultationId: number, result: any) {
     if (result.success) {
-      await this.updateSyncStatus(consultationId, 'mysql_to_crm', 'success');
+      await this.updateSyncStatus(consultationId, 'local_to_crm', 'success');
       await this.updateConsultationSyncStatus(consultationId, 'synced');
     } else {
       throw new Error(result.message || 'Unknown sync error');
@@ -169,12 +129,11 @@ export class SyncService {
     console.error(`Failed to sync consultation ${consultationId}:`, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    // Check if we should move to dead letter queue
     const syncRecord = await this.getSyncRecord(consultationId);
     if (syncRecord && syncRecord.attempts >= this.DEAD_LETTER_THRESHOLD) {
       await this.moveToDeadLetterQueue(consultationId, errorMessage);
     } else {
-      await this.updateSyncStatus(consultationId, 'mysql_to_crm', 'failed', errorMessage);
+      await this.updateSyncStatus(consultationId, 'local_to_crm', 'failed', errorMessage);
       await this.updateConsultationSyncStatus(consultationId, 'failed', errorMessage);
     }
   }
@@ -200,29 +159,11 @@ export class SyncService {
       [error, entityId]
     );
 
-    // Log dead letter queue entry for monitoring
     console.error(`Record moved to dead letter queue:`, {
       entityId,
       error,
       timestamp: new Date().toISOString()
     });
-  }
-
-  private async validateCRMConnection(): Promise<boolean> {
-    try {
-      const testResponse = await fetch(process.env.SUITECRM_URL + '/service/v4/rest.php');
-      const text = await testResponse.text();
-
-      if (text.includes('Cannot declare class LanguageManager')) {
-        console.error('SuiteCRM server has LanguageManager class conflict');
-        return false;
-      }
-
-      return testResponse.ok;
-    } catch (error) {
-      console.error('Failed to validate CRM connection:', error);
-      return false;
-    }
   }
 
   private async createSyncRecord({
@@ -231,7 +172,7 @@ export class SyncService {
     entity_id,
     checksum
   }: {
-    direction: 'mysql_to_crm' | 'crm_to_mysql';
+    direction: 'local_to_crm' | 'crm_to_local';
     entity_type: string;
     entity_id: number;
     checksum?: string;
@@ -246,7 +187,7 @@ export class SyncService {
 
   private async updateSyncStatus(
     entityId: number,
-    direction: 'mysql_to_crm' | 'crm_to_mysql',
+    direction: 'local_to_crm' | 'crm_to_local',
     status: 'success' | 'failed' | 'dead_letter',
     error?: string
   ): Promise<void> {
@@ -275,106 +216,6 @@ export class SyncService {
        WHERE id = $3`,
       [status, error || null, consultationId]
     );
-  }
-
-  private async getLastSyncTimestamp(): Promise<string> {
-    const result = await query<Array<{ last_sync: string }>>(
-      `SELECT MAX(last_attempt) as last_sync FROM sync_records WHERE direction = 'crm_to_mysql' AND status = 'success'`
-    );
-    return result[0]?.last_sync || '1970-01-01T00:00:00Z';
-  }
-
-  private async updateLastSyncTimestamp(): Promise<void> {
-    await query(
-      `INSERT INTO sync_records 
-       (direction, entity_type, entity_id, status, attempts, last_attempt)
-       VALUES ('crm_to_mysql', 'sync_timestamp', 0, 'success', 1, NOW())`
-    );
-  }
-
-  async processPendingSyncs(): Promise<void> {
-    try {
-      // Get pending sync records that haven't exceeded max attempts
-      const pendingSyncs = await query<SyncRecord[]>(
-        `SELECT * FROM sync_records 
-         WHERE status != 'success' 
-         AND attempts < $1
-         ORDER BY last_attempt ASC 
-         LIMIT $2`,
-        [this.MAX_ATTEMPTS, this.BATCH_SIZE]
-      );
-
-      for (const sync of pendingSyncs) {
-        if (sync.entity_type === 'consultation') {
-          await this.syncConsultationToCRM(sync.entity_id);
-        }
-      }
-
-      // Process CRM to local sync
-      await this.syncFromCRM();
-    } catch (error) {
-      console.error('Failed to process pending syncs:', error);
-    }
-  }
-  async syncFromCRM(): Promise<void> {
-    try {
-      // Get last sync timestamp
-      const lastSync = await this.getLastSyncTimestamp();
-
-      // Get updated records from CRM
-      const updatedRecords = await suiteCRMService.getUpdatedContacts(lastSync);
-
-      for (const record of updatedRecords) {
-        try {
-          await this.createSyncRecord({
-            direction: 'crm_to_mysql',
-            entity_type: 'consultation',
-            entity_id: parseInt(record.id)
-          });
-
-          // Check if record exists in local database
-          const existingConsultation = await query<any[]>(
-            `SELECT id FROM consultations WHERE email = $1`,
-            [record.email]
-          );
-
-          if (existingConsultation.length > 0) {
-            // Update existing record
-            await query(
-              `UPDATE consultations 
-               SET name = $1, phone = $2, notes = $3, 
-                   crm_sync_status = 'synced', 
-                   crm_last_sync = NOW()
-               WHERE id = $4`,
-              [record.name, record.phone, record.notes, existingConsultation[0].id]
-            );
-          } else {
-            // Create new record
-            await query(
-              `INSERT INTO consultations 
-               (name, email, phone, notes, crm_sync_status, crm_last_sync)
-               VALUES ($1, $2, $3, $4, 'synced', NOW())`,
-              [record.name, record.email, record.phone, record.notes]
-            );
-          }
-
-          await this.updateSyncStatus(parseInt(record.id), 'crm_to_mysql', 'success');
-        } catch (error) {
-          console.error(`Failed to sync CRM record ${record.id} to local database:`, error);
-          await this.updateSyncStatus(
-            parseInt(record.id),
-            'crm_to_mysql',
-            'failed',
-            error instanceof Error ? error.message : 'Unknown error'
-          );
-        }
-      }
-
-      // Update last sync timestamp
-      await this.updateLastSyncTimestamp();
-    } catch (error) {
-      console.error('Failed to sync from CRM:', error);
-    }
   }
 }
 
