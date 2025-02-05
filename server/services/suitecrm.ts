@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { env } from 'process';
+import crypto from 'crypto';
 
 interface ContactData {
   name: string;
@@ -33,44 +33,6 @@ export class SuiteCRMService {
   private readonly timeout: number = 15000; // 15 seconds timeout
   private readonly maxRetries: number = 3;
 
-  private async testServerConnection(): Promise<boolean> {
-    try {
-      console.log('Testing SuiteCRM server connection...');
-      const testResponse = await axios.get(`${this.baseUrl}/service/v4/rest.php`, {
-        timeout: 5000,
-        validateStatus: null
-      });
-
-      // Check if we got a successful response
-      if (testResponse.status !== 200) {
-        console.error(`SuiteCRM server returned status ${testResponse.status}`);
-        return false;
-      }
-
-      // Check for PHP configuration issues
-      const responseText = testResponse.data?.toString() || '';
-      if (responseText.includes('Cannot declare class LanguageManager')) {
-        console.error('SuiteCRM server has a LanguageManager class conflict. Try clearing the cache:');
-        console.error('1. Access your SuiteCRM admin panel');
-        console.error('2. Go to Admin > Repair > Quick Repair and Rebuild');
-        console.error('3. Clear all caches');
-        return false;
-      }
-
-      if (responseText.includes('Fatal error') ||
-          responseText.includes('Warning') ||
-          responseText.includes('Notice')) {
-        console.error('SuiteCRM PHP Configuration Issue:', responseText);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Failed to connect to SuiteCRM server:', error);
-      return false;
-    }
-  }
-
   constructor() {
     try {
       // Get configuration from environment variables
@@ -80,95 +42,184 @@ export class SuiteCRMService {
 
       // Validate required configuration
       if (!baseUrl || !this.username || !this.password) {
-        console.error('Missing required SuiteCRM configuration');
-        this.isServerAvailable = false;
-        return;
+        throw new Error('Missing required SuiteCRM configuration');
       }
 
-      // Ensure baseUrl has proper protocol and validate URL format
+      // Ensure baseUrl has proper protocol
       this.baseUrl = baseUrl.startsWith('http') ? baseUrl : `http://${baseUrl}`;
-      new URL(this.baseUrl); // Validate URL format
 
-      // Test server connection immediately
-      this.testServerConnection().then(available => {
-        this.isServerAvailable = available;
-        if (available) {
-          console.log('Successfully connected to SuiteCRM server');
-        }
-      });
+      // Initialize connection
+      this.initializeConnection();
 
     } catch (error) {
-      console.error('Invalid SuiteCRM configuration:', error);
+      console.error('Failed to initialize SuiteCRM service:', error);
       this.isServerAvailable = false;
     }
   }
 
-  private isValidJSON(str: string): boolean {
+  private async initializeConnection() {
     try {
-      JSON.parse(str);
-      return true;
-    } catch (e) {
+      console.log('Initializing connection to SuiteCRM...');
+      await this.validateCRMConnection();
+      const response = await this.login();
+      if (response) {
+        console.log('Successfully connected to SuiteCRM');
+        this.isServerAvailable = true;
+      }
+    } catch (error) {
+      console.error('Failed to initialize SuiteCRM connection:', error);
+      this.isServerAvailable = false;
+    }
+  }
+
+  private async validateCRMConnection(): Promise<boolean> {
+    try {
+      const testResponse = await fetch(this.baseUrl + '/service/v4/rest.php');
+      const text = await testResponse.text();
+
+      if (text.includes('Cannot declare class LanguageManager')) {
+        console.error('SuiteCRM server has LanguageManager class conflict');
+        return false;
+      }
+
+      if (text.includes('Warning: stream_wrapper_register()')) {
+        console.log('SuiteCRM has stream wrapper warnings - this is expected and can be ignored');
+        return true;
+      }
+
+      return testResponse.ok;
+    } catch (error) {
+      console.error('Failed to validate CRM connection:', error);
       return false;
     }
   }
 
-  private isHTMLResponse(str: string): boolean {
-    return str.trim().toLowerCase().startsWith('<!doctype') ||
-           str.trim().toLowerCase().startsWith('<html');
-  }
+  private async login(): Promise<string | null> {
+    try {
+      console.log('Authenticating with SuiteCRM...');
 
-  private validateResponse(response: any): any {
-    if (typeof response.data === 'string') {
-      // Log raw response for debugging
-      console.log('SuiteCRM Raw Response:', {
-        data: response.data.substring(0, 500),
+      // Create MD5 hash of password for SuiteCRM authentication
+      const passwordMd5 = crypto.createHash('md5').update(this.password).digest('hex');
+
+      const response = await axios.post(
+        `${this.baseUrl}/service/v4/rest.php`,
+        {
+          method: 'login',
+          input_type: 'JSON',
+          response_type: 'JSON',
+          rest_data: {
+            user_auth: {
+              user_name: this.username,
+              password: passwordMd5,
+              version: '4'
+            },
+            application_name: 'CubbyLuxe Integration'
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          timeout: this.timeout,
+          transformResponse: [(data) => {
+            if (typeof data === 'string') {
+              // Remove PHP warnings while keeping the JSON response
+              const jsonStart = data.indexOf('{');
+              const jsonEnd = data.lastIndexOf('}') + 1;
+              if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                const jsonPart = data.substring(jsonStart, jsonEnd);
+                try {
+                  return JSON.parse(jsonPart);
+                } catch (e) {
+                  console.error('Failed to parse JSON part:', jsonPart);
+                  throw new Error('Invalid JSON response');
+                }
+              }
+              throw new Error('No valid JSON found in response');
+            }
+            return data;
+          }]
+        }
+      );
+
+      // Log response for debugging
+      console.log('SuiteCRM login response:', {
         status: response.status,
-        headers: response.headers,
-        endpoint: response.config?.url
+        data: response.data
       });
 
-      // Check if response is HTML
-      if (this.isHTMLResponse(response.data)) {
-        console.error('Received HTML response instead of JSON:', response.data.substring(0, 200));
-        this.isServerAvailable = false;
-        throw new Error('SuiteCRM returned HTML instead of JSON - server may be misconfigured');
+      if (!response.data?.id) {
+        throw new Error('Invalid login response from SuiteCRM');
       }
 
-      // Enhanced PHP error detection with specific error types
-      if (response.data.includes('Fatal error: Cannot declare class LanguageManager')) {
-        console.error('SuiteCRM Class Loading Error:', {
-          error: response.data,
-          timestamp: new Date().toISOString(),
-          endpoint: response.config?.url
-        });
-        this.isServerAvailable = false;
-        throw new Error('SuiteCRM server has a class loading conflict. Please clear the server cache and verify the installation.');
-      } else if (response.data.includes('Fatal error') ||
-          response.data.includes('Warning') ||
-          response.data.includes('Notice')) {
-        console.error('SuiteCRM PHP Error:', {
-          error: response.data,
-          timestamp: new Date().toISOString(),
-          endpoint: response.config?.url
-        });
-        this.isServerAvailable = false;
-        throw new Error('SuiteCRM server is experiencing PHP configuration issues. Please check server logs.');
-      }
+      this.sessionId = response.data.id;
+      return response.data.id;
 
-      // Try to parse JSON if string
-      if (!this.isValidJSON(response.data)) {
-        console.error('Invalid JSON Response:', {
-          response: response.data.substring(0, 200),
-          contentType: response.headers['content-type']
-        });
-        this.isServerAvailable = false;
-        throw new Error('Invalid response format from SuiteCRM');
-      }
-
-      return JSON.parse(response.data);
+    } catch (error) {
+      console.error('SuiteCRM login failed:', error);
+      return null;
     }
+  }
 
-    return response.data;
+  private async makeRequest(method: string, parameters: any, retryCount: number = 0): Promise<SuiteCRMResponse> {
+    try {
+      if (!this.sessionId) {
+        await this.login();
+      }
+
+      if (!this.sessionId) {
+        throw new Error('Failed to obtain session ID');
+      }
+
+      const response = await axios.post(
+        `${this.baseUrl}/service/v4/rest.php`,
+        {
+          method,
+          input_type: 'JSON',
+          response_type: 'JSON',
+          rest_data: {
+            session: this.sessionId,
+            ...parameters
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          timeout: this.timeout,
+          transformResponse: [(data) => {
+            if (typeof data === 'string') {
+              // Remove PHP warnings while keeping the JSON response
+              const jsonStart = data.indexOf('{');
+              const jsonEnd = data.lastIndexOf('}') + 1;
+              if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                const jsonPart = data.substring(jsonStart, jsonEnd);
+                try {
+                  return JSON.parse(jsonPart);
+                } catch (e) {
+                  console.error('Failed to parse JSON part:', jsonPart);
+                  throw new Error('Invalid JSON response');
+                }
+              }
+              throw new Error('No valid JSON found in response');
+            }
+            return data;
+          }]
+        }
+      );
+
+      return response.data;
+
+    } catch (error) {
+      if (retryCount < this.maxRetries) {
+        console.log(`Retrying request after error (attempt ${retryCount + 1}/${this.maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+        return this.makeRequest(method, parameters, retryCount + 1);
+      }
+      throw error;
+    }
   }
 
   async getUpdatedContacts(since: string): Promise<any[]> {
@@ -209,63 +260,17 @@ export class SuiteCRMService {
   }
 
   async createContact(contactData: ContactData): Promise<{ success: boolean; message: string }> {
-    if (!this.isServerAvailable) {
-      console.log('SuiteCRM is not available, storing locally for future sync');
-      return {
-        success: true,
-        message: 'Your consultation request has been saved and will be processed as soon as possible. Our team will contact you shortly.'
-      };
-    }
-
     try {
+      if (!this.isServerAvailable) {
+        await this.initializeConnection();
+      }
+
+      console.log('Creating contact in SuiteCRM:', contactData.email);
+
       const [firstName, ...lastNameParts] = contactData.name.split(' ');
       const lastName = lastNameParts.join(' ') || '-';
 
-      console.log('Attempting to create records in SuiteCRM for:', contactData.email);
-
-      // Attempt to create records in SuiteCRM
-      const result = await this.attemptCreateCRMRecords(contactData, firstName, lastName);
-
-      return {
-        success: true,
-        message: 'Your consultation has been scheduled successfully. We will contact you shortly to confirm the details.'
-      };
-
-    } catch (error) {
-      console.error('Failed to create records in SuiteCRM:', error);
-      this.isServerAvailable = false;
-
-      // Return a user-friendly message while ensuring data is stored locally
-      return {
-        success: true,
-        message: 'Your consultation request has been received. Our team will process it and contact you shortly.'
-      };
-    }
-  }
-
-  private async attemptCreateCRMRecords(
-    contactData: ContactData,
-    firstName: string,
-    lastName: string
-  ): Promise<void> {
-    try {
-      // 1. Create Account record
-      const account = await this.makeRequest('set_entry', {
-        module_name: 'Accounts',
-        name_value_list: {
-          name: `${contactData.name} - Residential`,
-          phone_office: contactData.phone,
-          email1: contactData.email,
-          description: 'Cubby House Consultation Client',
-          account_type: 'Customer'
-        }
-      });
-
-      if (!account.id) {
-        throw new Error('Failed to create account record');
-      }
-
-      // 2. Create Contact record
+      // Create contact record
       const contact = await this.makeRequest('set_entry', {
         module_name: 'Contacts',
         name_value_list: {
@@ -274,71 +279,41 @@ export class SuiteCRMService {
           email1: contactData.email,
           phone_mobile: contactData.phone,
           description: contactData.notes || '',
-          lead_source: 'Web Site',
-          account_id: account.id
+          lead_source: 'Web Site'
         }
       });
 
-      if (!contact.id) {
+      if (!contact?.id) {
         throw new Error('Failed to create contact record');
       }
 
-      // 3. Link Contact to Account
-      await this.makeRequest('set_relationship', {
-        module_name: 'Accounts',
-        module_id: account.id,
-        link_field_name: 'contacts',
-        related_ids: [contact.id]
-      });
-
-      // 4. Create Lead record
-      await this.makeRequest('set_entry', {
-        module_name: 'Leads',
-        name_value_list: {
-          first_name: firstName,
-          last_name: lastName,
-          phone_mobile: contactData.phone,
-          email1: contactData.email,
-          description: 'Cubby House Consultation Inquiry',
-          status: 'New',
-          lead_source: 'Web Site',
-          account_id: account.id,
-          contact_id: contact.id
-        }
-      });
-
-      // 5. Add consultation notes if provided
-      if (contactData.notes) {
-        await this.makeRequest('set_entry', {
-          module_name: 'Notes',
-          name_value_list: {
-            name: 'Initial Consultation Notes',
-            description: contactData.notes,
-            parent_type: 'Accounts',
-            parent_id: account.id
-          }
-        });
+      // If date/time provided, create meeting
+      if (contactData.preferredDate) {
+        await this.createMeeting(contact.id, contactData);
       }
 
-      // 6. Schedule meeting if date/time provided
-      if (contactData.preferredDate && contactData.preferredTime) {
-        await this.createMeetingRecord(contactData, account.id, contact.id);
-      }
+      return {
+        success: true,
+        message: 'Your consultation request has been received and a meeting has been scheduled. We will contact you shortly to confirm the details.'
+      };
+
     } catch (error) {
-      console.error('Error in attemptCreateCRMRecords:', error);
-      throw error;
+      console.error('Failed to create contact in SuiteCRM:', error);
+      return {
+        success: false,
+        message: 'We are experiencing technical difficulties. Please try again later or contact us directly.'
+      };
     }
   }
 
-  private async createMeetingRecord(
-    contactData: ContactData,
-    accountId: string,
-    contactId: string
-  ): Promise<void> {
-    console.log('Creating meeting record');
-    const meetingDate = new Date(contactData.preferredDate!);
-    const [hours, minutes] = contactData.preferredTime!.split(':');
-    meetingDate.setHours(parseInt(hours), parseInt(minutes));
+  private async createMeeting(contactId: string, contactData: ContactData): Promise<void> {
+    if (!contactData.preferredDate) return;
+
+    const meetingDate = new Date(contactData.preferredDate);
+    if (contactData.preferredTime) {
+      const [hours, minutes] = contactData.preferredTime.split(':');
+      meetingDate.setHours(parseInt(hours), parseInt(minutes));
+    }
 
     const endDate = new Date(meetingDate);
     endDate.setHours(endDate.getHours() + 1);
@@ -346,172 +321,25 @@ export class SuiteCRMService {
     const meeting = await this.makeRequest('set_entry', {
       module_name: 'Meetings',
       name_value_list: {
-        name: `Cubby House Consultation - ${contactData.name}`,
+        name: `Consultation - ${contactData.name}`,
         date_start: meetingDate.toISOString(),
         date_end: endDate.toISOString(),
         duration_hours: '1',
         duration_minutes: '0',
         status: 'Planned',
-        description: contactData.notes || '',
-        location: 'Online/Phone',
-        parent_type: 'Accounts',
-        parent_id: accountId
+        description: contactData.notes || 'Website consultation request',
+        location: 'To be confirmed'
       }
     });
 
-    if (meeting.id) {
-      // Link meeting to both contact and account
+    if (meeting?.id) {
+      // Link meeting to contact
       await this.makeRequest('set_relationship', {
         module_name: 'Meetings',
         module_id: meeting.id,
         link_field_name: 'contacts',
         related_ids: [contactId]
       });
-
-      await this.makeRequest('set_relationship', {
-        module_name: 'Meetings',
-        module_id: meeting.id,
-        link_field_name: 'accounts',
-        related_ids: [accountId]
-      });
-    }
-  }
-
-  private async login(): Promise<string> {
-    try {
-      if (!this.isServerAvailable) {
-        throw new Error('SuiteCRM server is not properly configured');
-      }
-
-      console.log('Attempting to authenticate with SuiteCRM at URL:', this.baseUrl);
-
-      // Test URL connectivity first (moved to testServerConnection)
-
-      const loginPayload = {
-        method: 'login',
-        input_type: 'JSON',
-        response_type: 'JSON',
-        rest_data: {
-          user_auth: {
-            user_name: this.username,
-            password: this.password,
-          },
-          application: 'CubbyLuxe Integration'
-        }
-      };
-
-      console.log('Sending login request to SuiteCRM...');
-
-      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, loginPayload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        timeout: this.timeout,
-        validateStatus: null
-      });
-
-      // Check HTTP status first
-      if (response.status !== 200) {
-        console.error(`HTTP ${response.status} received:`, response.statusText);
-        throw new Error(`Server returned status ${response.status}`);
-      }
-
-      // Log raw response for debugging
-      if (typeof response.data === 'string') {
-        console.log('Raw response:', response.data.substring(0, 200));
-      }
-
-      // Validate and parse response
-      const data = this.validateResponse(response);
-
-      if (!data?.id) {
-        console.error('Invalid login response format:', data);
-        throw new Error('Invalid response format from SuiteCRM');
-      }
-
-      this.isServerAvailable = true;
-      console.log('Successfully authenticated with SuiteCRM');
-      return data.id;
-
-    } catch (error) {
-      this.isServerAvailable = false;
-      if (axios.isAxiosError(error)) {
-        console.error('Network error details:', {
-          code: error.code,
-          message: error.message,
-          response: error.response?.data
-        });
-      }
-      console.error('SuiteCRM login failed:', error);
-      throw error;
-    }
-  }
-
-  private async setSession(retryCount: number = 0): Promise<void> {
-    if (!this.sessionId) {
-      try {
-        this.sessionId = await this.login();
-      } catch (error) {
-        if (retryCount < this.maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-          console.log(`Retrying login after ${delay}ms (attempt ${retryCount + 1}/${this.maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return this.setSession(retryCount + 1);
-        }
-        console.error('Max retry attempts reached for SuiteCRM login');
-        throw error;
-      }
-    }
-  }
-
-  private async makeRequest(method: string, parameters: any, retryCount: number = 0): Promise<SuiteCRMResponse> {
-    if (!this.isServerAvailable && retryCount === 0) {
-      console.log('SuiteCRM server is marked as unavailable, skipping request');
-      return {};
-    }
-
-    try {
-      await this.setSession();
-
-      const payload = {
-        method,
-        input_type: 'JSON',
-        response_type: 'JSON',
-        rest_data: {
-          session: this.sessionId,
-          ...parameters
-        }
-      };
-
-      console.log(`Making SuiteCRM request: ${method}`);
-      const response = await axios.post(`${this.baseUrl}/service/v4/rest.php`, payload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        timeout: this.timeout,
-        validateStatus: null // Allow any status code for proper error handling
-      });
-
-      // Check HTTP status first
-      if (response.status !== 200) {
-        console.error(`HTTP ${response.status} received:`, response.statusText);
-        throw new Error(`Server returned status ${response.status}`);
-      }
-
-      // Validate and parse response
-      return this.validateResponse(response);
-
-    } catch (error) {
-      if (retryCount < this.maxRetries) {
-        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-        console.log(`Retrying request after ${delay}ms (attempt ${retryCount + 1}/${this.maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return this.makeRequest(method, parameters, retryCount + 1);
-      }
-      console.error(`SuiteCRM ${method} request failed after ${this.maxRetries} attempts:`, error);
-      throw error;
     }
   }
 }
