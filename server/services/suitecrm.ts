@@ -14,15 +14,32 @@ export class SuiteCRMService {
   private baseUrl: string;
   private readonly timeout: number = 30000;
   private sessionId: string | null = null;
+  private lastLoginAttempt: number = 0;
+  private readonly loginRetryDelay: number = 60000; // 1 minute
 
   constructor() {
-    const url = process.env.SUITECRM_URL || 'http://4.236.188.48';
-    this.baseUrl = url.startsWith('http') ? url : `http://${url}`;
+    let url = process.env.SUITECRM_URL || 'http://172.191.25.147';
+    // Remove trailing slashes and ensure proper formatting
+    url = url.replace(/\/+$/, '');
+    if (!url.startsWith('http')) {
+      url = `http://${url}`;
+    }
+    this.baseUrl = url;
     console.log('[SuiteCRM] Service initialized with base URL:', this.baseUrl);
+  }
+
+  private getApiEndpoint(): string {
+    return `${this.baseUrl}/service/v4_1/rest.php`;
   }
 
   private async login(): Promise<string> {
     try {
+      const now = Date.now();
+      if (this.lastLoginAttempt && (now - this.lastLoginAttempt) < this.loginRetryDelay) {
+        throw new Error('Login attempted too frequently');
+      }
+      this.lastLoginAttempt = now;
+
       console.log('[SuiteCRM] Attempting to login...');
 
       const username = process.env.SUITECRM_USERNAME;
@@ -36,7 +53,7 @@ export class SuiteCRMService {
       const passwordMd5 = createHash('md5').update(password).digest('hex');
 
       const response = await axios.post(
-        `${this.baseUrl}/service/v4_1/rest.php`,
+        this.getApiEndpoint(),
         {
           method: 'login',
           input_type: 'JSON',
@@ -47,7 +64,9 @@ export class SuiteCRMService {
               password: passwordMd5,
               version: '4.1'
             },
-            application: 'CubbyLuxe-Integration'
+            application: 'CubbyLuxe-Integration',
+            name_value_list: [],
+            link_name_to_fields_array: true
           }
         },
         {
@@ -55,20 +74,33 @@ export class SuiteCRMService {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          timeout: this.timeout
+          timeout: this.timeout,
+          validateStatus: function (status) {
+            return status < 500; // Accept any status less than 500
+          }
         }
       );
+
+      console.log('[SuiteCRM] Login response status:', response.status);
 
       if (response.data?.id) {
         this.sessionId = response.data.id;
         console.log('[SuiteCRM] Login successful');
-        return response.data.id; 
+        return response.data.id;
       } else {
-        throw new Error('Invalid login response');
+        console.error('[SuiteCRM] Invalid login response:', response.data);
+        throw new Error('Invalid login response structure');
       }
     } catch (error) {
-      console.error('[SuiteCRM] Login failed:', error instanceof Error ? error.message : String(error));
-      throw new Error('Failed to authenticate with SuiteCRM');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[SuiteCRM] Login failed:', errorMessage);
+      if (axios.isAxiosError(error)) {
+        console.error('[SuiteCRM] Response details:', {
+          status: error.response?.status,
+          data: error.response?.data
+        });
+      }
+      throw new Error(`Failed to authenticate with SuiteCRM: ${errorMessage}`);
     }
   }
 
@@ -95,7 +127,7 @@ export class SuiteCRMService {
         await this.login();
       }
 
-      // REST v4 API payload
+      // REST v4 API payload with link_name_to_fields_array set to true
       const restData = {
         session: this.sessionId,
         module_name: 'Meetings',
@@ -106,17 +138,15 @@ export class SuiteCRMService {
           { name: 'status', value: 'Planned' },
           { name: 'description', value: `Contact Info:\nEmail: ${consultationData.email}\nPhone: ${consultationData.phone}\n\nNotes: ${consultationData.notes || 'No additional notes'}` },
           { name: 'type', value: 'Consultation' }
-        ]
+        ],
+        link_name_to_fields_array: true,
+        version: '4.1'
       };
 
-      console.log('[SuiteCRM] Sending REST v4 request for meeting creation:', {
-        url: `${this.baseUrl}/service/v4_1/rest.php`,
-        method: 'set_entry',
-        data: { ...restData, session: '***' }
-      });
+      console.log('[SuiteCRM] Sending meeting creation request');
 
       const response = await axios.post(
-        `${this.baseUrl}/service/v4_1/rest.php`,
+        this.getApiEndpoint(),
         {
           method: 'set_entry',
           input_type: 'JSON',
@@ -128,11 +158,14 @@ export class SuiteCRMService {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          timeout: this.timeout
+          timeout: this.timeout,
+          validateStatus: function (status) {
+            return status < 500;
+          }
         }
       );
 
-      console.log('[SuiteCRM] REST v4 response:', {
+      console.log('[SuiteCRM] Meeting creation response:', {
         status: response.status,
         data: response.data
       });
@@ -150,6 +183,7 @@ export class SuiteCRMService {
       // If the error is due to an invalid session, try to login again and retry once
       if (error instanceof Error && error.message.includes('Invalid Session ID')) {
         try {
+          console.log('[SuiteCRM] Session expired, attempting to re-login');
           this.sessionId = null;
           await this.login();
           return this.createConsultationMeeting(consultationData);
@@ -159,6 +193,13 @@ export class SuiteCRMService {
       }
 
       console.error('[SuiteCRM] Failed to create consultation meeting:', error instanceof Error ? error.message : String(error));
+      if (axios.isAxiosError(error)) {
+        console.error('[SuiteCRM] Response details:', {
+          status: error.response?.status,
+          data: error.response?.data
+        });
+      }
+
       return {
         success: false,
         message: 'We encountered an issue scheduling your consultation. Please try again later or contact us directly.'
