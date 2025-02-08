@@ -19,11 +19,13 @@ async function cleanupTestData() {
   );
 }
 
-async function testRESTv4Connection(): Promise<boolean> {
+export async function testRESTv4Connection(): Promise<boolean> {
   try {
     console.log('[Test] Testing REST v4 API connection...');
+    // Use environment variable for URL
+    const baseUrl = process.env.SUITECRM_URL || 'http://172.191.25.147';
     const response = await axios.post(
-      'http://4.236.188.48/service/v4_1/rest.php',
+      `${baseUrl}/service/v4_1/rest.php`,
       {
         method: 'get_server_info',
         input_type: 'JSON',
@@ -51,7 +53,7 @@ async function testRESTv4Connection(): Promise<boolean> {
   }
 }
 
-async function testSuiteCRMConnection() {
+export async function testSuiteCRMConnection() {
   try {
     console.log('\n=== SuiteCRM Connection Tests ===\n');
 
@@ -96,12 +98,14 @@ async function testSuiteCRMConnection() {
   }
 }
 
-// Run tests
-console.log('Starting SuiteCRM integration tests...');
-testSuiteCRMConnection().then(results => {
-  console.log('\nTest Results:', results);
-  if (!results.success) {
-    process.exit(1);
-  }
-  process.exit(0);
-});
+// Only run tests if this file is executed directly
+if (require.main === module) {
+  console.log('Starting SuiteCRM integration tests...');
+  testSuiteCRMConnection().then(results => {
+    console.log('\nTest Results:', results);
+    if (!results.success) {
+      process.exit(1);
+    }
+    process.exit(0);
+  });
+}

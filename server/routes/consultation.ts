@@ -2,11 +2,54 @@ import { Router } from 'express';
 import { suiteCRMService } from '../services/suitecrm';
 import { saveConsultation } from '../database';
 import { syncService } from '../services/syncService';
+import { testRESTv4Connection } from '../tests/test-crm-connection';
 
 const router = Router();
 
-router.post('/schedule-consultation', async (req, res) => {
+// Test endpoint - mounted at /api/consultation/test-connection
+router.post('/test-connection', async (req, res) => {
   try {
+    res.setHeader('Content-Type', 'application/json');
+    console.log('[API] Testing CRM connection...');
+    const restV4Available = await testRESTv4Connection();
+
+    if (!restV4Available) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to connect to SuiteCRM REST v4 API'
+      });
+    }
+
+    // Test meeting creation
+    const testResult = await suiteCRMService.createConsultationMeeting({
+      name: 'Test User',
+      email: 'test@example.com',
+      phone: '1234567890',
+      notes: 'Test consultation',
+      preferredDate: '2025-02-27',
+      preferredTime: '15:30'
+    });
+
+    return res.json({
+      success: true,
+      apiConnection: true,
+      meetingCreation: testResult.success,
+      details: testResult
+    });
+
+  } catch (error) {
+    console.error('CRM connection test failed:', error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
+    });
+  }
+});
+
+// Schedule consultation endpoint - mounted at /api/consultation/schedule
+router.post('/schedule', async (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
     console.log('1. Backend received consultation request:', {
       ...req.body,
       // Exclude sensitive data from logs

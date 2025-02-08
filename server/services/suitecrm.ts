@@ -16,7 +16,7 @@ export class SuiteCRMService {
   private sessionId: string | null = null;
 
   constructor() {
-    const url = process.env.SUITECRM_URL || 'http://4.236.188.48';
+    const url = process.env.SUITECRM_URL || 'http://172.191.25.147';
     this.baseUrl = url.startsWith('http') ? url : `http://${url}`;
     console.log('[SuiteCRM] Service initialized with base URL:', this.baseUrl);
   }
