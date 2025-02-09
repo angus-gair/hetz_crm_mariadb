@@ -17,7 +17,7 @@ A professional web application for custom cubby house services, providing a comp
 - Express backend
 - Tailwind CSS for styling
 - shadcn/ui components
-- MySQL database
+- PostgreSQL database
 
 ## Quick Start
 
