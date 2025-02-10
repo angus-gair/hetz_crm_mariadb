@@ -91,9 +91,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           method: 'get'
         },
         {
-          name: 'CORS Preflight Test',
-          url: `${SUITECRM_URL}/Api/access/token`,
-          method: 'options'
+          name: 'API Config Check',
+          url: `${SUITECRM_URL}/Api/V8/config`,
+          method: 'get'
+        },
+        {
+          name: 'OAuth Public Key Check',
+          url: `${SUITECRM_URL}/Api/V8/OAuth2/public.key`,
+          method: 'get'
         }
       ];
 
@@ -148,6 +153,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         serverInfo: {
           nodeVersion: process.version,
           platform: process.platform
+        },
+        dockerConfig: {
+          dbUser: 'bn_suitecrm',
+          dbName: 'bitnami_suitecrm',
+          apiPort: 8080
         }
       });
     } catch (error) {
