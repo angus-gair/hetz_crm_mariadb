@@ -42,7 +42,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           url: `${SUITECRM_URL}/legacy/Api/V8/oauth2/token`,
           method: 'post',
           headers: {
-            'Accept': 'application/vnd.api+json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
+            'Access-Control-Allow-Headers': 'Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With',
             'Content-Type': 'application/json'
           }
         },
@@ -50,6 +52,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: 'Legacy API Endpoint',
           url: `${SUITECRM_URL}/service/v4_1/rest.php`,
           method: 'post',
+          headers: {
+            'Content-Type': 'application/json'
+          },
           data: {
             method: 'login',
             input_type: 'JSON',
@@ -66,13 +71,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         {
           name: 'Ping Endpoint',
-          url: `${SUITECRM_URL}/rest/v10/ping`,
-          method: 'get'
+          url: `${SUITECRM_URL}/ping`,
+          method: 'get',
+          headers: {
+            'Accept': 'application/json'
+          }
         },
         {
           name: 'About Endpoint',
           url: `${SUITECRM_URL}/about`,
-          method: 'get'
+          method: 'get',
+          headers: {
+            'Accept': 'application/json'
+          }
+        },
+        {
+          name: 'Legacy Ping',
+          url: `${SUITECRM_URL}/service/v4_1/rest.php`,
+          method: 'post',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          data: {
+            method: 'ping',
+            input_type: 'JSON',
+            response_type: 'JSON',
+            rest_data: []
+          }
+        },
+        {
+          name: 'Server Root Check',
+          url: `${SUITECRM_URL}/`,
+          method: 'head',
+          headers: {
+            'Accept': 'text/html'
+          }
+        },
+        {
+          name: 'Legacy Index',
+          url: `${SUITECRM_URL}/index.php`,
+          method: 'get',
+          headers: {
+            'Accept': 'text/html'
+          }
+        },
+        {
+          name: 'API Config Check',
+          url: `${SUITECRM_URL}/legacy/Api/V8/config`,
+          method: 'get',
+          headers: {
+            'Accept': 'application/vnd.api+json',
+            'Content-Type': 'application/json'
+          }
+        },
+        {
+          name: 'OAuth Public Key Check',
+          url: `${SUITECRM_URL}/legacy/Api/V8/OAuth2/publicKey`,
+          method: 'get',
+          headers: {
+            'Accept': 'application/vnd.api+json',
+            'Content-Type': 'application/json'
+          }
         }
       ];
 
@@ -115,10 +174,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: endpoint.name,
               error: true,
               status: error.response?.status,
-              statusText: error.response?.statusText,
-              message: error.message,
-              data: error.response?.data,
-              headers: error.response?.headers,
+              statusText: error.response?.statusText || error.message,
+              data: error.response?.data || '',
+              headers: error.response?.headers || {},
               method: endpoint.method
             };
           }
