@@ -58,6 +58,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name_value_list: []
             }
           }
+        },
+        {
+          name: 'Ping Endpoint',
+          url: `${SUITECRM_URL}/rest/v10/ping`,
+          method: 'get'
+        },
+        {
+          name: 'About Endpoint',
+          url: `${SUITECRM_URL}/about`,
+          method: 'get'
+        },
+        {
+          name: 'Legacy Ping',
+          url: `${SUITECRM_URL}/service/v4_1/rest.php`,
+          method: 'post',
+          data: {
+            method: 'ping',
+            input_type: 'JSON',
+            response_type: 'JSON',
+            rest_data: []
+          }
         }
       ];
 
@@ -71,10 +92,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
-                'User-Agent': 'SuiteCRM-Test-Client/1.0'
+                'User-Agent': 'SuiteCRM-Test-Client/1.0',
+                'X-Debug': '1',
+                'X-API-Version': 'v8'
               },
               timeout: 5000,
-              validateStatus: null // Accept all status codes for debugging
+              validateStatus: null, // Accept all status codes for debugging
+              maxRedirects: 5
             });
 
             return {
