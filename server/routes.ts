@@ -24,40 +24,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // SuiteCRM test endpoint
   apiRouter.get('/test-suitecrm', async (req, res) => {
     try {
-      // Test V8 API
-      const v8Result = await axios.get(`${SUITECRM_URL}/Api/access/token`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+      // Test V8 API with different endpoints
+      const testEndpoints = [
+        {
+          name: 'V8 Token Endpoint',
+          url: `${SUITECRM_URL}/Api/access/token`,
+          method: 'get'
+        },
+        {
+          name: 'V8 OAuth Endpoint',
+          url: `${SUITECRM_URL}/Api/V8/oauth2/token`,
+          method: 'post',
+          data: {
+            grant_type: 'client_credentials',
+            client_id: 'sugar',
+            client_secret: ''
+          }
+        },
+        {
+          name: 'Legacy API Endpoint',
+          url: `${SUITECRM_URL}/service/v4_1/rest.php`,
+          method: 'post',
+          data: {
+            method: 'login',
+            input_type: 'JSON',
+            response_type: 'JSON',
+            rest_data: {
+              user_auth: {
+                user_name: '',
+                password: ''
+              },
+              application_name: 'RestTest',
+              name_value_list: []
+            }
+          }
         }
-      }).catch(error => ({
-        error: {
-          message: error.message,
-          status: error.response?.status,
-          data: error.response?.data
-        }
-      }));
+      ];
 
-      // Test Legacy API
-      const legacyResult = await axios.get(`${SUITECRM_URL}/service/v4_1/rest.php`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      }).catch(error => ({
-        error: {
-          message: error.message,
-          status: error.response?.status,
-          data: error.response?.data
-        }
-      }));
+      const results = await Promise.all(
+        testEndpoints.map(async endpoint => {
+          try {
+            const response = await axios({
+              method: endpoint.method,
+              url: endpoint.url,
+              data: endpoint.data,
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'SuiteCRM-Test-Client/1.0'
+              },
+              timeout: 5000,
+              validateStatus: null // Accept all status codes for debugging
+            });
+
+            return {
+              name: endpoint.name,
+              status: response.status,
+              statusText: response.statusText,
+              data: response.data,
+              headers: response.headers
+            };
+          } catch (error: any) {
+            return {
+              name: endpoint.name,
+              error: true,
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              message: error.message,
+              data: error.response?.data,
+              headers: error.response?.headers
+            };
+          }
+        })
+      );
 
       res.json({
-        v8Api: v8Result.error || v8Result.data,
-        legacyApi: legacyResult.error || legacyResult.data,
-        serverTime: new Date().toISOString()
+        results,
+        serverTime: new Date().toISOString(),
+        serverInfo: {
+          nodeVersion: process.version,
+          platform: process.platform
+        }
       });
     } catch (error) {
+      console.error('SuiteCRM test error:', error);
       res.status(500).json({
         error: 'Failed to test SuiteCRM connection',
         details: error instanceof Error ? error.message : 'Unknown error',
