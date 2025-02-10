@@ -4,7 +4,7 @@ services:
     build: .
     ports:
       - "8080:8080"
-      - "8443:8443"
+      - "8443:8443" 
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
       - SUITECRM_DATABASE_USER=bn_suitecrm
@@ -18,7 +18,7 @@ services:
       - PHP_UPLOAD_MAX_FILESIZE=100M
     volumes:
       - suitecrm_data:/bitnami/suitecrm
-      - ./oauth2:/bitnami/suitecrm/public/legacy/Api/V8/OAuth2
+      - ./oauth2:/bitnami/suitecrm/public/legacy/Api/V8/OAuth2:ro
     networks:
       - suitecrm-network
     depends_on:
