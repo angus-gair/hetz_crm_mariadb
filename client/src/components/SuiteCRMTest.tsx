@@ -7,9 +7,11 @@ export default function SuiteCRMTest() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<string>('');
+  const [error, setError] = useState<string>('');
 
   const testConnection = async () => {
     setIsLoading(true);
+    setError('');
     try {
       const version = await suiteCrmClient.testConnection();
       setResult(JSON.stringify(version, null, 2));
@@ -18,10 +20,12 @@ export default function SuiteCRMTest() {
         description: 'Successfully connected to SuiteCRM API',
       });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to SuiteCRM';
       console.error('Connection test failed:', error);
+      setError(errorMessage);
       toast({
         title: 'Connection Failed',
-        description: error instanceof Error ? error.message : 'Failed to connect to SuiteCRM',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -32,17 +36,31 @@ export default function SuiteCRMTest() {
   return (
     <div className="p-4 space-y-4">
       <h2 className="text-2xl font-bold">SuiteCRM API Test</h2>
-      <Button 
-        onClick={testConnection}
-        disabled={isLoading}
-      >
-        {isLoading ? 'Testing...' : 'Test Connection'}
-      </Button>
-      {result && (
-        <pre className="p-4 bg-gray-100 rounded-lg overflow-auto">
-          {result}
-        </pre>
-      )}
+      <div className="space-y-2">
+        <Button 
+          onClick={testConnection}
+          disabled={isLoading}
+          className="w-full sm:w-auto"
+        >
+          {isLoading ? 'Testing...' : 'Test Connection'}
+        </Button>
+
+        {error && (
+          <div className="p-4 bg-red-50 text-red-700 rounded-lg">
+            <h3 className="font-semibold">Error Details:</h3>
+            <pre className="mt-2 text-sm whitespace-pre-wrap">{error}</pre>
+          </div>
+        )}
+
+        {result && (
+          <div className="mt-4">
+            <h3 className="font-semibold mb-2">Response:</h3>
+            <pre className="p-4 bg-gray-100 rounded-lg overflow-auto max-h-60">
+              {result}
+            </pre>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
