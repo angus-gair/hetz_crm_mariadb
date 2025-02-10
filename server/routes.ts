@@ -29,7 +29,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const testEndpoints = [
         {
-          name: 'Legacy API Authentication',
+          name: 'V8 Token Endpoint',
+          url: `${SUITECRM_URL}/legacy/Api/access_token`,
+          method: 'get',
+          headers: {
+            'Accept': 'application/vnd.api+json',
+            'Content-Type': 'application/json'
+          }
+        },
+        {
+          name: 'V8 OAuth Endpoint',
+          url: `${SUITECRM_URL}/legacy/Api/V8/oauth2/token`,
+          method: 'post',
+          headers: {
+            'Accept': 'application/vnd.api+json',
+            'Content-Type': 'application/json'
+          }
+        },
+        {
+          name: 'Legacy API Endpoint',
           url: `${SUITECRM_URL}/service/v4_1/rest.php`,
           method: 'post',
           data: {
@@ -45,6 +63,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               application_name: 'RestTest'
             }
           }
+        },
+        {
+          name: 'Ping Endpoint',
+          url: `${SUITECRM_URL}/rest/v10/ping`,
+          method: 'get'
+        },
+        {
+          name: 'About Endpoint',
+          url: `${SUITECRM_URL}/about`,
+          method: 'get'
         }
       ];
 
@@ -62,7 +90,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               data: endpoint.data,
               headers: {
                 'User-Agent': 'SuiteCRM-Test-Client/1.0',
-                'Content-Type': 'application/json',
                 ...endpoint.headers
               },
               timeout: 5000,
