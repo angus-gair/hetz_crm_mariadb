@@ -10,11 +10,15 @@ services:
       - SUITECRM_DATABASE_USER=bn_suitecrm
       - SUITECRM_DATABASE_PASSWORD=bitnami
       - SUITECRM_DATABASE_NAME=bitnami_suitecrm
-      # Add environment variables for API configuration
+      - SUITECRM_DATABASE_HOST=mariadb
       - APACHE_HTTP_PORT_NUMBER=8080
       - APACHE_HTTPS_PORT_NUMBER=8443
+      - PHP_MEMORY_LIMIT=256M
+      - PHP_POST_MAX_SIZE=100M
+      - PHP_UPLOAD_MAX_FILESIZE=100M
     volumes:
       - suitecrm_data:/bitnami/suitecrm
+      - ./oauth2:/bitnami/suitecrm/public/legacy/Api/V8/OAuth2
     networks:
       - suitecrm-network
     depends_on:
@@ -34,7 +38,10 @@ services:
 
 networks:
   suitecrm-network:
+    driver: bridge
 
 volumes:
   mariadb_data:
+    driver: local
   suitecrm_data:
+    driver: local
