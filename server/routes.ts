@@ -6,8 +6,10 @@ import { userSchema } from "../db/schema";
 import { validateConfig } from "./config";
 import { initDatabase } from "./database";
 
-const SUITECRM_URL = 'http://135.181.101.154:8080';
-const OAUTH2_CLIENT_ID = 'c64e46d7-bb4a-f32c-e2f0-67aa61527f73';
+// SuiteCRM configuration
+const SUITECRM_URL = process.env.SUITECRM_URL || 'http://135.181.101.154:8080';
+const SUITECRM_USERNAME = process.env.SUITECRM_USERNAME || 'user';
+const SUITECRM_PASSWORD = process.env.SUITECRM_PASSWORD || 'bitnami';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Validate config and initialize database
@@ -25,30 +27,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // SuiteCRM test endpoint
   apiRouter.get('/test-suitecrm', async (req, res) => {
     try {
-      // Test V8 API with different endpoints
       const testEndpoints = [
         {
-          name: 'V8 Token Endpoint',
-          url: `${SUITECRM_URL}/Api/access/token`,
-          method: 'get',
-          headers: {
-            'Authorization': `Bearer ${OAUTH2_CLIENT_ID}`,
-            'Accept': 'application/vnd.api+json',
-            'Content-Type': 'application/vnd.api+json'
-          }
-        },
-        {
-          name: 'V8 OAuth Endpoint',
-          url: `${SUITECRM_URL}/Api/V8/oauth2/token`,
-          method: 'post',
-          data: {
-            grant_type: 'client_credentials',
-            client_id: OAUTH2_CLIENT_ID,
-            scope: 'standard:create standard:read standard:update standard:delete standard:relationship:create standard:relationship:read standard:relationship:update standard:relationship:delete'
-          }
-        },
-        {
-          name: 'Legacy API Endpoint',
+          name: 'Legacy API Authentication',
           url: `${SUITECRM_URL}/service/v4_1/rest.php`,
           method: 'post',
           data: {
@@ -57,22 +38,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             response_type: 'JSON',
             rest_data: {
               user_auth: {
-                user_name: 'admin',
-                password: process.env.SUITECRM_ADMIN_PASSWORD || '',
+                user_name: SUITECRM_USERNAME,
+                password: SUITECRM_PASSWORD,
                 version: '8.1'
               },
-              application_name: 'RestTest',
-              name_value_list: []
+              application_name: 'RestTest'
             }
-          }
-        },
-        {
-          name: 'API Config Check',
-          url: `${SUITECRM_URL}/Api/V8/config`,
-          method: 'get',
-          headers: {
-            'Authorization': `Bearer ${OAUTH2_CLIENT_ID}`,
-            'Accept': 'application/vnd.api+json'
           }
         }
       ];
@@ -80,21 +51,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const results = await Promise.all(
         testEndpoints.map(async endpoint => {
           try {
+            console.log(`Testing endpoint: ${endpoint.name}`);
+            console.log(`URL: ${endpoint.url}`);
+            console.log('Headers:', endpoint.headers);
+            console.log('Data:', endpoint.data);
+
             const response = await axios({
               method: endpoint.method,
               url: endpoint.url,
               data: endpoint.data,
               headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
                 'User-Agent': 'SuiteCRM-Test-Client/1.0',
-                'X-API-Version': 'v8',
+                'Content-Type': 'application/json',
                 ...endpoint.headers
               },
               timeout: 5000,
               validateStatus: null,
               maxRedirects: 5
             });
+
+            console.log(`Response status: ${response.status}`);
+            console.log('Response headers:', response.headers);
+            console.log('Response data:', response.data);
 
             return {
               name: endpoint.name,
@@ -105,6 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               method: endpoint.method
             };
           } catch (error: any) {
+            console.error(`Error testing ${endpoint.name}:`, error.message);
             return {
               name: endpoint.name,
               error: true,
@@ -125,13 +104,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         serverInfo: {
           nodeVersion: process.version,
           platform: process.platform
-        },
-        dockerConfig: {
-          dbHost: '172.19.0.3',
-          dbUser: 'bn_suitecrm',
-          dbName: 'bitnami_suitecrm',
-          apiPort: 8080,
-          httpsPort: 8443
         }
       });
     } catch (error) {
