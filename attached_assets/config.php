@@ -1,5 +1,5 @@
 <?php
-// created: 2025-02-08 02:19:00
+// created: 2025-02-10 15:05:21
 $Diagnostic = array (
   'addAjaxBannedModules' => 
   array (
@@ -41,11 +41,11 @@ $Diagnostic = array (
   'aop' => 
   array (
     'distribution_method' => 'roundRobin',
-    'case_closure_email_template_id' => 'b80a1a71-a2cc-82ba-fbd4-67a6bc966fa3',
-    'joomla_account_creation_email_template_id' => 'bc7b2aa4-0bab-579d-0202-67a6bcdb2d54',
-    'case_creation_email_template_id' => 'beedae79-bbd3-c49e-a258-67a6bce49bb0',
-    'contact_email_template_id' => 'db08114c-477e-89af-5781-67a6bc00a616',
-    'user_email_template_id' => 'de846f0a-74b2-4286-354f-67a6bc4b0479',
+    'case_closure_email_template_id' => 'ea7bae3b-14d5-277d-e873-67a8debdd3b2',
+    'joomla_account_creation_email_template_id' => 'ec9ef996-16d5-23bb-531c-67a8dead5fb0',
+    'case_creation_email_template_id' => 'efc92442-d68d-757d-60ff-67a8de043930',
+    'contact_email_template_id' => 'f2bb3331-35b4-8fe4-854f-67a8debe0315',
+    'user_email_template_id' => '1bcc0e62-c0c7-a00b-37ae-67a8de11fecf',
   ),
   'aos' => 
   array (
@@ -117,7 +117,7 @@ $Diagnostic = array (
   'datef' => 'm/d/Y',
   'dbconfig' => 
   array (
-    'db_host_name' => '127.0.0.1',
+    'db_host_name' => 'mariadb',
     'db_host_instance' => '',
     'db_user_name' => 'bn_suitecrm',
     'db_password' => '********',
@@ -185,7 +185,7 @@ $Diagnostic = array (
   'display_inbound_email_buttons' => false,
   'dump_slow_queries' => false,
   'email_address_separator' => ',',
-  'email_confirm_opt_in_email_template_id' => '52ffcef7-9b37-cf1f-64f4-67a6bca966b4',
+  'email_confirm_opt_in_email_template_id' => 'd9d6f549-9141-9e6a-d593-67a8de86ccd0',
   'email_default_client' => 'sugar',
   'email_default_delete_attachments' => true,
   'email_default_editor' => 'html',
@@ -238,7 +238,7 @@ $Diagnostic = array (
   'google_auth_json' => '',
   'hide_subpanels' => true,
   'history_max_viewed' => 50,
-  'host_name' => '172.191.25.147',
+  'host_name' => 'localhost',
   'id_validation_pattern' => '/^[a-zA-Z0-9_-]*$/i',
   'imap_test' => false,
   'import_max_execution_time' => 3600,
@@ -298,13 +298,13 @@ $Diagnostic = array (
     'l s f' => 'l s f',
     'l f s' => 'l f s',
   ),
-  'oauth2_encryption_key' => 'YSHCTLyvzGBAYV8kpmYCkK8UYsRKG7nC7EmisEHhO90=',
+  'oauth2_encryption_key' => 'LeWV48dmPhjFz/es2xWeUIXPhAlZy5FOr77BGWsp0A0=',
   'passwordsetting' => 
   array (
     'SystemGeneratedPasswordON' => '',
-    'generatepasswordtmpl' => '87c6e2f1-8ec2-2d13-665e-67a6bc939960',
-    'lostpasswordtmpl' => '8a4122da-c155-e418-9295-67a6bc5b1db7',
-    'factoremailtmpl' => '8d6230be-6227-81af-5193-67a6bcff7bcf',
+    'generatepasswordtmpl' => 'ccd8258f-0f4a-e557-87dd-67a8dee191aa',
+    'lostpasswordtmpl' => 'cfafb1e1-111a-ffc0-fd4f-67a8de9c3deb',
+    'factoremailtmpl' => 'd200b805-f0b9-34b2-e5af-67a8ded41587',
     'forgotpasswordON' => false,
     'linkexpiration' => '1',
     'linkexpirationtime' => '30',
@@ -352,7 +352,7 @@ $Diagnostic = array (
       'host' => 'localhost',
       'user' => '',
       'pass' => '',
-      'index' => '0ad485bda8aec6a26e25e4d9f04d336e',
+      'index' => 'da3f7a4e44a346ad77e1cb2ae028a513',
       'search_wildcard_char' => '%',
       'search_wildcard_infront' => true,
     ),
@@ -378,7 +378,7 @@ $Diagnostic = array (
   ),
   'showDetailData' => true,
   'showThemePicker' => true,
-  'site_url' => 'http://172.191.25.147',
+  'site_url' => 'http://localhost:8080',
   'slow_query_time_msec' => '100',
   'snooze_alert_timer' => 600,
   'stackTrace' => false,
@@ -391,7 +391,7 @@ $Diagnostic = array (
   'suitecrm_version' => NULL,
   'system_email_templates' => 
   array (
-    'confirm_opt_in_template_id' => '52ffcef7-9b37-cf1f-64f4-67a6bca966b4',
+    'confirm_opt_in_template_id' => 'd9d6f549-9141-9e6a-d593-67a8de86ccd0',
   ),
   'system_name' => 'SuiteCRM',
   'time_formats' => 
@@ -414,7 +414,7 @@ $Diagnostic = array (
   'trusted_hosts' => 
   array (
   ),
-  'unique_key' => '0ad485bda8aec6a26e25e4d9f04d336e',
+  'unique_key' => 'da3f7a4e44a346ad77e1cb2ae028a513',
   'upload_badext' => 
   array (
     0 => 'php',
