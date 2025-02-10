@@ -79,6 +79,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             response_type: 'JSON',
             rest_data: []
           }
+        },
+        {
+          name: 'Server Root Check',
+          url: `${SUITECRM_URL}`,
+          method: 'head'
+        },
+        {
+          name: 'Legacy Index',
+          url: `${SUITECRM_URL}/legacy/index.php`,
+          method: 'get'
+        },
+        {
+          name: 'CORS Preflight Test',
+          url: `${SUITECRM_URL}/Api/access/token`,
+          method: 'options'
         }
       ];
 
@@ -94,11 +109,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 'Content-Type': 'application/json',
                 'User-Agent': 'SuiteCRM-Test-Client/1.0',
                 'X-Debug': '1',
-                'X-API-Version': 'v8'
+                'X-API-Version': 'v8',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Authorization': 'Basic ' + Buffer.from('admin:').toString('base64')
               },
               timeout: 5000,
               validateStatus: null, // Accept all status codes for debugging
-              maxRedirects: 5
+              maxRedirects: 5,
+              withCredentials: true
             });
 
             return {
@@ -106,7 +124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: response.status,
               statusText: response.statusText,
               data: response.data,
-              headers: response.headers
+              headers: response.headers,
+              method: endpoint.method
             };
           } catch (error: any) {
             return {
@@ -116,7 +135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               statusText: error.response?.statusText,
               message: error.message,
               data: error.response?.data,
-              headers: error.response?.headers
+              headers: error.response?.headers,
+              method: endpoint.method
             };
           }
         })
