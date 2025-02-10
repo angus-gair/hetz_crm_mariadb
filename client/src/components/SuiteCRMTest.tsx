@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { suiteCrmClient } from '@/lib/suitecrm';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import axios from 'axios';
 
 export default function SuiteCRMTest() {
   const { toast } = useToast();
@@ -13,18 +13,18 @@ export default function SuiteCRMTest() {
     setIsLoading(true);
     setError('');
     try {
-      const version = await suiteCrmClient.testConnection();
-      setResult(JSON.stringify(version, null, 2));
+      const response = await axios.get('/api/test-suitecrm');
+      setResult(JSON.stringify(response.data, null, 2));
       toast({
-        title: 'Connection Successful',
-        description: 'Successfully connected to SuiteCRM API',
+        title: 'Connection Test Complete',
+        description: 'Check the results below for connection details',
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to SuiteCRM';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to test SuiteCRM connection';
       console.error('Connection test failed:', error);
       setError(errorMessage);
       toast({
-        title: 'Connection Failed',
+        title: 'Connection Test Failed',
         description: errorMessage,
         variant: 'destructive',
       });
@@ -42,7 +42,7 @@ export default function SuiteCRMTest() {
           disabled={isLoading}
           className="w-full sm:w-auto"
         >
-          {isLoading ? 'Testing...' : 'Test Connection'}
+          {isLoading ? 'Testing Connection...' : 'Test SuiteCRM Connection'}
         </Button>
 
         {error && (
@@ -54,8 +54,8 @@ export default function SuiteCRMTest() {
 
         {result && (
           <div className="mt-4">
-            <h3 className="font-semibold mb-2">Response:</h3>
-            <pre className="p-4 bg-gray-100 rounded-lg overflow-auto max-h-60">
+            <h3 className="font-semibold mb-2">Connection Test Results:</h3>
+            <pre className="p-4 bg-gray-100 rounded-lg overflow-auto max-h-96">
               {result}
             </pre>
           </div>
