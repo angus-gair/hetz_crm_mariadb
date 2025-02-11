@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const SUITECRM_URL = import.meta.env.VITE_SUITECRM_URL || 'http://localhost:8080';
+// In development, proxy through our Express server which will handle routing to SuiteCRM
+const SUITECRM_URL = '/api/suitecrm';
 
 class SuiteCRMClient {
   private axiosInstance;
@@ -8,10 +9,10 @@ class SuiteCRMClient {
   constructor() {
     this.axiosInstance = axios.create({
       baseURL: SUITECRM_URL,
-      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/vnd.api+json',
+        'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
       }
     });
 
@@ -38,14 +39,12 @@ class SuiteCRMClient {
   // Test connection and version
   async testConnection() {
     try {
-      // First try the V8 API endpoint
-      const response = await this.axiosInstance.get('/Api/V8/meta/now');
+      const response = await this.axiosInstance.get('/meta/now');
       return response.data;
     } catch (error) {
       console.error('Failed to connect to SuiteCRM V8 API, trying legacy endpoint...');
       try {
-        // Fallback to legacy API endpoint
-        const legacyResponse = await this.axiosInstance.post('/service/v4_1/rest.php', {
+        const legacyResponse = await this.axiosInstance.post('/v4_1/rest', {
           method: 'get_server_info',
           input_type: 'JSON',
           response_type: 'JSON',
@@ -59,21 +58,24 @@ class SuiteCRMClient {
     }
   }
 
-  // Get CSRF token
-  async getCsrfToken() {
+  // Get OAuth token using client credentials
+  async getToken() {
     try {
-      const response = await this.axiosInstance.get('/Api/V8/meta/csrf');
+      const response = await this.axiosInstance.post('/oauth2/token', {
+        grant_type: 'client_credentials',
+        client_id: '3d55a713-12be-62ea-c814-67aaf6faa94f',
+        client_secret: 'a4e27aa43c190b48b250c2e59f322761971eabfab923d1db8e86bcaecc7b1d08'
+      });
       return response.data;
     } catch (error) {
-      console.error('Failed to get CSRF token:', error);
+      console.error('Failed to get OAuth token:', error);
       throw error;
     }
   }
 
-  // Test authentication
   async login(username: string, password: string) {
     try {
-      const response = await this.axiosInstance.post('/Api/V8/oauth2/token', {
+      const response = await this.axiosInstance.post('/oauth2/token', {
         grant_type: 'password',
         username,
         password,

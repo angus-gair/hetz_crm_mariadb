@@ -2,7 +2,8 @@ import { Resolver, Query, Mutation, Arg } from "type-graphql";
 import axios from "axios";
 import { SuiteCRMConnection, SuiteCRMCredentials } from "./types";
 
-const SUITECRM_URL = process.env.SUITECRM_URL || 'http://localhost:8080';
+// Use Docker container's internal network address
+const SUITECRM_URL = process.env.SUITECRM_URL || 'http://172.19.0.2:8080';
 const CLIENT_ID = '3d55a713-12be-62ea-c814-67aaf6faa94f';
 const CLIENT_SECRET = 'a4e27aa43c190b48b250c2e59f322761971eabfab923d1db8e86bcaecc7b1d08';
 
