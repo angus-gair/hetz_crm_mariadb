@@ -37,7 +37,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           method: 'get',
           headers: {
             'Accept': 'application/vnd.api+json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'User-Agent': 'SuiteCRM-Test-Client/1.0'
           }
         },
         {
@@ -48,7 +49,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
             'Access-Control-Allow-Headers': 'Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'User-Agent': 'SuiteCRM-Test-Client/1.0'
+          },
+          data: {
+            grant_type: 'password',
+            client_id: 'sugar',
+            client_secret: '',
+            username: SUITECRM_USERNAME,
+            password: SUITECRM_PASSWORD,
+            scope: ''
           }
         },
         {
@@ -56,7 +66,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           url: cleanUrl(`${SUITECRM_URL}/service/v4_1/rest.php`),
           method: 'post',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'User-Agent': 'SuiteCRM-Test-Client/1.0'
           },
           data: {
             method: 'login',
@@ -70,24 +81,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               },
               application_name: 'RestTest'
             }
-          }
-        },
-        {
-          name: 'API Config Check',
-          url: cleanUrl(`${SUITECRM_URL}/legacy/Api/V8/config`),
-          method: 'get',
-          headers: {
-            'Accept': 'application/vnd.api+json',
-            'Content-Type': 'application/json'
-          }
-        },
-        {
-          name: 'OAuth Public Key Check',
-          url: cleanUrl(`${SUITECRM_URL}/legacy/Api/V8/OAuth2/publicKey`),
-          method: 'get',
-          headers: {
-            'Accept': 'application/vnd.api+json',
-            'Content-Type': 'application/json'
           }
         }
       ];
@@ -123,19 +116,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: endpoint.name,
               status: response.status,
               statusText: response.statusText,
-              data: response.data,
+              data: response.data || '',
+              error: response.status >= 400 ? 'Request failed' : undefined,
               headers: response.headers,
               method: endpoint.method
             };
           } catch (error: any) {
             console.error(`Error testing ${endpoint.name}:`, error.message);
+            console.error('Full error:', error);
             return {
               name: endpoint.name,
               status: error.response?.status,
               statusText: error.response?.statusText || error.message,
               data: error.response?.data || '',
+              error: error.message,
               headers: error.response?.headers || {},
-              method: endpoint.method
+              method: endpoint.method,
+              stack: error.stack
             };
           }
         })
