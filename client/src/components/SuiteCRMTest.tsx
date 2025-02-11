@@ -2,7 +2,22 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Copy } from 'lucide-react';
-import axios from 'axios';
+
+const TEST_CONNECTION_QUERY = `
+  query TestConnection {
+    testSuiteCRMConnection {
+      success
+      message
+      endpoints {
+        name
+        status
+        statusText
+        error
+        data
+      }
+    }
+  }
+`;
 
 export default function SuiteCRMTest() {
   const { toast } = useToast();
@@ -14,11 +29,27 @@ export default function SuiteCRMTest() {
     setIsLoading(true);
     setError('');
     try {
-      const response = await axios.get('/api/test-suitecrm');
-      setResult(JSON.stringify(response.data, null, 2));
+      const response = await fetch('/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: TEST_CONNECTION_QUERY
+        }),
+      });
+
+      const data = await response.json();
+      setResult(JSON.stringify(data, null, 2));
+
+      if (data.errors) {
+        throw new Error(data.errors[0].message);
+      }
+
       toast({
         title: 'Connection Test Complete',
-        description: 'Check the results below for connection details',
+        description: data.data.testSuiteCRMConnection.message,
+        variant: data.data.testSuiteCRMConnection.success ? 'default' : 'destructive'
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to test SuiteCRM connection';
@@ -52,7 +83,7 @@ export default function SuiteCRMTest() {
 
   return (
     <div className="p-4 space-y-4">
-      <h2 className="text-2xl font-bold">SuiteCRM API Test</h2>
+      <h2 className="text-2xl font-bold">SuiteCRM API Test (GraphQL)</h2>
       <div className="space-y-2">
         <div className="flex gap-2">
           <Button 
