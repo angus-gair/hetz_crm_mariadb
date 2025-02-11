@@ -3,6 +3,8 @@ import axios from "axios";
 import { SuiteCRMConnection, SuiteCRMCredentials } from "./types";
 
 const SUITECRM_URL = process.env.SUITECRM_URL || 'http://localhost:8080';
+const CLIENT_ID = '3d55a713-12be-62ea-c814-67aaf6faa94f';
+const CLIENT_SECRET = 'a4e27aa43c190b48b250c2e59f322761971eabfab923d1db8e86bcaecc7b1d08';
 
 @Resolver()
 export class SuiteCRMResolver {
@@ -29,8 +31,8 @@ export class SuiteCRMResolver {
         },
         data: {
           grant_type: 'client_credentials',
-          client_id: 'sugar',
-          client_secret: ''
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET
         }
       },
       {
@@ -46,6 +48,26 @@ export class SuiteCRMResolver {
           input_type: 'JSON',
           response_type: 'JSON',
           rest_data: []
+        }
+      },
+      {
+        name: 'API Config Check',
+        url: `${SUITECRM_URL}/Api/V8/meta/config`,
+        method: 'get' as const,
+        headers: {
+          'Accept': 'application/vnd.api+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
+        }
+      },
+      {
+        name: 'OAuth Public Key Check',
+        url: `${SUITECRM_URL}/Api/V8/oauth2/publickey`,
+        method: 'get' as const,
+        headers: {
+          'Accept': 'application/vnd.api+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
         }
       }
     ];
@@ -114,12 +136,9 @@ export class SuiteCRMResolver {
       const response = await axios.post(
         `${SUITECRM_URL}/Api/V8/oauth2/token`,
         {
-          grant_type: 'password',
-          client_id: 'sugar',
-          client_secret: '',
-          username: credentials.username,
-          password: credentials.password,
-          scope: ''
+          grant_type: 'client_credentials',
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET
         },
         {
           headers: {
