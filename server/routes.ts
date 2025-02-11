@@ -11,6 +11,9 @@ const SUITECRM_URL = process.env.SUITECRM_URL || 'http://135.181.101.154:8080';
 const SUITECRM_USERNAME = process.env.SUITECRM_USERNAME || 'user';
 const SUITECRM_PASSWORD = process.env.SUITECRM_PASSWORD || 'bitnami';
 
+// Helper function to clean URL (remove double slashes except after protocol)
+const cleanUrl = (url: string) => url.replace(/([^:]\/)\/+/g, "$1");
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Validate config and initialize database
   validateConfig();
@@ -30,7 +33,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const testEndpoints = [
         {
           name: 'V8 Token Endpoint',
-          url: `${SUITECRM_URL}/legacy/Api/access_token`,
+          url: cleanUrl(`${SUITECRM_URL}/legacy/Api/access_token`),
           method: 'get',
           headers: {
             'Accept': 'application/vnd.api+json',
@@ -39,7 +42,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         {
           name: 'V8 OAuth Endpoint',
-          url: `${SUITECRM_URL}/legacy/Api/V8/oauth2/token`,
+          url: cleanUrl(`${SUITECRM_URL}/legacy/Api/V8/oauth2/token`),
           method: 'post',
           headers: {
             'Access-Control-Allow-Origin': '*',
@@ -50,7 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         {
           name: 'Legacy API Endpoint',
-          url: `${SUITECRM_URL}/service/v4_1/rest.php`,
+          url: cleanUrl(`${SUITECRM_URL}/service/v4_1/rest.php`),
           method: 'post',
           headers: {
             'Content-Type': 'application/json'
@@ -70,54 +73,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         },
         {
-          name: 'Ping Endpoint',
-          url: `${SUITECRM_URL}/ping`,
-          method: 'get',
-          headers: {
-            'Accept': 'application/json'
-          }
-        },
-        {
-          name: 'About Endpoint',
-          url: `${SUITECRM_URL}/about`,
-          method: 'get',
-          headers: {
-            'Accept': 'application/json'
-          }
-        },
-        {
-          name: 'Legacy Ping',
-          url: `${SUITECRM_URL}/service/v4_1/rest.php`,
-          method: 'post',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          data: {
-            method: 'ping',
-            input_type: 'JSON',
-            response_type: 'JSON',
-            rest_data: []
-          }
-        },
-        {
-          name: 'Server Root Check',
-          url: `${SUITECRM_URL}/`,
-          method: 'head',
-          headers: {
-            'Accept': 'text/html'
-          }
-        },
-        {
-          name: 'Legacy Index',
-          url: `${SUITECRM_URL}/index.php`,
-          method: 'get',
-          headers: {
-            'Accept': 'text/html'
-          }
-        },
-        {
           name: 'API Config Check',
-          url: `${SUITECRM_URL}/legacy/Api/V8/config`,
+          url: cleanUrl(`${SUITECRM_URL}/legacy/Api/V8/config`),
           method: 'get',
           headers: {
             'Accept': 'application/vnd.api+json',
@@ -126,7 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         {
           name: 'OAuth Public Key Check',
-          url: `${SUITECRM_URL}/legacy/Api/V8/OAuth2/publicKey`,
+          url: cleanUrl(`${SUITECRM_URL}/legacy/Api/V8/OAuth2/publicKey`),
           method: 'get',
           headers: {
             'Accept': 'application/vnd.api+json',
@@ -134,6 +91,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       ];
+
+      console.log(`[SuiteCRM] Testing connection to ${SUITECRM_URL}`);
 
       const results = await Promise.all(
         testEndpoints.map(async endpoint => {
@@ -172,7 +131,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error(`Error testing ${endpoint.name}:`, error.message);
             return {
               name: endpoint.name,
-              error: true,
               status: error.response?.status,
               statusText: error.response?.statusText || error.message,
               data: error.response?.data || '',
