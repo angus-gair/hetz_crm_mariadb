@@ -2,7 +2,8 @@ import { Resolver, Query, Mutation, Arg } from "type-graphql";
 import axios from "axios";
 import { SuiteCRMConnection, SuiteCRMCredentials } from "./types";
 
-const SUITECRM_URL = process.env.SUITECRM_URL || 'http://135.181.101.154:8080';
+// Use Docker container name and port from docker-compose.yml
+const SUITECRM_URL = process.env.SUITECRM_URL || 'http://suitecrm:8080';
 
 @Resolver()
 export class SuiteCRMResolver {
@@ -11,7 +12,7 @@ export class SuiteCRMResolver {
     const endpoints = [
       {
         name: 'V8 Token Endpoint',
-        url: `${SUITECRM_URL}/Api/access_token`,
+        url: `${SUITECRM_URL}/Api/access/token`,
         method: 'get' as const,
         headers: {
           'Accept': 'application/vnd.api+json',
@@ -37,9 +38,11 @@ export class SuiteCRMResolver {
     ];
 
     try {
+      console.log('Testing SuiteCRM connection with URL:', SUITECRM_URL);
       const results = await Promise.all(
         endpoints.map(async endpoint => {
           try {
+            console.log(`Testing endpoint: ${endpoint.name} at ${endpoint.url}`);
             const response = await axios({
               method: endpoint.method,
               url: endpoint.url,
@@ -47,6 +50,12 @@ export class SuiteCRMResolver {
               data: endpoint.data,
               timeout: 5000,
               validateStatus: null
+            });
+
+            console.log(`Response for ${endpoint.name}:`, {
+              status: response.status,
+              statusText: response.statusText,
+              data: response.data
             });
 
             return {
@@ -57,6 +66,7 @@ export class SuiteCRMResolver {
               error: response.status >= 400 ? 'Request failed' : undefined
             };
           } catch (error: any) {
+            console.error(`Error testing ${endpoint.name}:`, error.message);
             return {
               name: endpoint.name,
               status: error.response?.status || 500,
@@ -74,6 +84,7 @@ export class SuiteCRMResolver {
         results
       );
     } catch (error: any) {
+      console.error('Connection test failed:', error.message);
       return new SuiteCRMConnection(
         false,
         error.message,
