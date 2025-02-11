@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Copy } from 'lucide-react';
 import axios from 'axios';
 
 export default function SuiteCRMTest() {
@@ -33,17 +34,46 @@ export default function SuiteCRMTest() {
     }
   };
 
+  const copyResults = async () => {
+    try {
+      await navigator.clipboard.writeText(result);
+      toast({
+        title: 'Copied!',
+        description: 'Test results copied to clipboard',
+      });
+    } catch (error) {
+      toast({
+        title: 'Copy Failed',
+        description: 'Failed to copy results to clipboard',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="p-4 space-y-4">
       <h2 className="text-2xl font-bold">SuiteCRM API Test</h2>
       <div className="space-y-2">
-        <Button 
-          onClick={testConnection}
-          disabled={isLoading}
-          className="w-full sm:w-auto"
-        >
-          {isLoading ? 'Testing Connection...' : 'Test SuiteCRM Connection'}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={testConnection}
+            disabled={isLoading}
+            className="w-full sm:w-auto"
+          >
+            {isLoading ? 'Testing Connection...' : 'Test SuiteCRM Connection'}
+          </Button>
+
+          {result && (
+            <Button
+              onClick={copyResults}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copy Results
+            </Button>
+          )}
+        </div>
 
         {error && (
           <div className="p-4 bg-red-50 text-red-700 rounded-lg">
