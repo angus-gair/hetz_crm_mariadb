@@ -2,8 +2,7 @@ import { Resolver, Query, Mutation, Arg } from "type-graphql";
 import axios from "axios";
 import { SuiteCRMConnection, SuiteCRMCredentials } from "./types";
 
-// Use Docker container name and port from docker-compose.yml
-const SUITECRM_URL = process.env.SUITECRM_URL || 'http://suitecrm:8080';
+const SUITECRM_URL = process.env.SUITECRM_URL || 'http://localhost:8080';
 
 @Resolver()
 export class SuiteCRMResolver {
@@ -12,12 +11,26 @@ export class SuiteCRMResolver {
     const endpoints = [
       {
         name: 'V8 Token Endpoint',
-        url: `${SUITECRM_URL}/Api/access/token`,
+        url: `${SUITECRM_URL}/Api/V8/meta/now`,
         method: 'get' as const,
         headers: {
           'Accept': 'application/vnd.api+json',
           'Content-Type': 'application/json',
           'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
+        }
+      },
+      {
+        name: 'V8 OAuth Endpoint',
+        url: `${SUITECRM_URL}/Api/V8/oauth2/token`,
+        method: 'post' as const,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
+        },
+        data: {
+          grant_type: 'client_credentials',
+          client_id: 'sugar',
+          client_secret: ''
         }
       },
       {
