@@ -22,18 +22,18 @@ export function Hero() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="relative aspect-[4/3] rounded-lg overflow-hidden">
+          <div className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-xl">
             <img 
-              src="/gallery/hero-1.jpg" 
+              src="https://picsum.photos/800/600?random=7" 
               alt="Premium Cubby House Design"
-              className="object-cover w-full h-full"
+              className="object-cover w-full h-full transform hover:scale-105 transition-transform duration-300"
             />
           </div>
-          <div className="relative aspect-[4/3] rounded-lg overflow-hidden">
+          <div className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-xl">
             <img 
-              src="/gallery/hero-2.jpg" 
+              src="https://picsum.photos/800/600?random=8" 
               alt="Luxury Play Space"
-              className="object-cover w-full h-full"
+              className="object-cover w-full h-full transform hover:scale-105 transition-transform duration-300"
             />
           </div>
         </div>
