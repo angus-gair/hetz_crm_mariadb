@@ -13,26 +13,46 @@ type GalleryItem = {
 const galleryItems: GalleryItem[] = [
   {
     id: "1",
-    title: "Adventure Castle",
+    title: "Enchanted Castle",
     description: "A magical castle-themed cubby house with climbing features",
-    image: "/gallery/cubby-1.jpg",
+    image: "/images/portfolio/cubby1.jpg",
     category: "Castle"
   },
   {
     id: "2",
     title: "Forest Retreat",
     description: "Natural wood finish with integrated outdoor play area",
-    image: "/gallery/cubby-2.jpg",
+    image: "/images/portfolio/cubby2.jpg",
     category: "Modern"
   },
   {
     id: "3",
-    title: "Coastal Cottage",
+    title: "Seaside Haven",
     description: "Beach-inspired design with weatherproof features",
-    image: "/gallery/cubby-3.jpg",
+    image: "/images/portfolio/cubby3.jpg",
     category: "Cottage"
   },
-  // Add more items as needed
+  {
+    id: "4",
+    title: "Woodland Lodge",
+    description: "Rustic design with natural elements",
+    image: "/images/portfolio/cubby4.jpg",
+    category: "Modern"
+  },
+  {
+    id: "5",
+    title: "Princess Palace",
+    description: "Elegant design with royal touches",
+    image: "/images/portfolio/cubby5.jpg",
+    category: "Castle"
+  },
+  {
+    id: "6",
+    title: "Coastal Retreat",
+    description: "Beachside inspired playhouse",
+    image: "/images/portfolio/cubby6.jpg",
+    category: "Cottage"
+  }
 ];
 
 const categories = ["All", "Castle", "Modern", "Cottage"];

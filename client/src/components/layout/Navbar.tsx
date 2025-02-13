@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { siteConfig } from "@/config";
+import { Link, useLocation } from "wouter";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
+  const [location] = useLocation();
 
   const navigation = [
     { name: "Home", href: "#home" },
@@ -39,7 +40,7 @@ export function Navbar() {
     const sectionId = href.replace('#', '');
     const element = document.getElementById(sectionId);
     if (element) {
-      const navHeight = 64;
+      const navHeight = 64; // Height of the navbar
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - navHeight;
 
@@ -64,7 +65,7 @@ export function Navbar() {
                 scrollToSection('#home');
               }}
             >
-              <span className="text-xl font-bold">{siteConfig.name}</span>
+              <span className="text-xl font-bold">CubbyLuxe</span>
             </a>
           </div>
 
@@ -86,12 +87,9 @@ export function Navbar() {
                 {item.name}
               </a>
             ))}
-            <a
-              href="tel:0468333745"
-              className="px-3 py-2 text-sm font-medium rounded-md transition-colors bg-black text-white hover:bg-gray-900"
-            >
-              0468 333 745
-            </a>
+            <Link href="/admin" className="px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-600 hover:bg-gray-100">
+              Admin
+            </Link>
           </div>
 
           {/* Mobile menu button */}
@@ -131,12 +129,9 @@ export function Navbar() {
                 {item.name}
               </a>
             ))}
-            <a
-              href="tel:0468333745"
-              className="block rounded-md px-3 py-2 text-base font-medium bg-black text-white hover:bg-gray-900"
-            >
-              0468 333 745
-            </a>
+            <Link href="/admin" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-100">
+              Admin
+            </Link>
           </div>
         </div>
       )}

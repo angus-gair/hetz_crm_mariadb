@@ -11,49 +11,47 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen">
       <main className="flex-1">
         {/* Hero section */}
-        <section className="bg-background">
+        <section id="home" className="bg-background">
           <Hero />
         </section>
 
-        {/* Gallery section */}
-        <section className="py-20 bg-secondary/10">
+        {/* Portfolio section */}
+        <section id="portfolio" className="py-20 bg-secondary/10">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <GalleryGrid />
           </div>
         </section>
 
-        {/* Features section */}
-        <section className="py-20 bg-background">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <Features />
-          </div>
-        </section>
-
-        {/* Testimonials section */}
-        <section className="py-20 bg-secondary/10">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <Testimonials />
-          </div>
-        </section>
-
-        {/* Team section */}
-        <section className="py-20 bg-background">
+        {/* About Us section */}
+        <section id="about" className="py-20 bg-background">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <TeamSection />
           </div>
         </section>
 
-        {/* Connect section */}
-        <section className="py-20 bg-secondary/10">
+        {/* Consultation section */}
+        <section id="consultation" className="py-20 bg-background">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <ConnectWithUs />
+            <ConsultationScheduler />
           </div>
         </section>
 
-        {/* Consultation section */}
+        {/* Additional sections */}
+        <section className="py-20 bg-secondary/10">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <Features />
+          </div>
+        </section>
+
         <section className="py-20 bg-background">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <ConsultationScheduler />
+            <Testimonials />
+          </div>
+        </section>
+
+        <section className="py-20 bg-secondary/10">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <ConnectWithUs />
           </div>
         </section>
       </main>

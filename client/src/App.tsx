@@ -6,7 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
-import SuiteCRMTest from "@/components/SuiteCRMTest";
+import AdminPage from "@/pages/admin";
 
 function Router() {
   return (
@@ -14,12 +14,8 @@ function Router() {
       {/* Main homepage route */}
       <Route path="/" component={HomePage} />
 
-      {/* SuiteCRM test page moved to /crm-test route */}
-      <Route path="/crm-test" component={() => (
-        <div className="container mx-auto py-8">
-          <SuiteCRMTest />
-        </div>
-      )} />
+      {/* Admin page */}
+      <Route path="/admin" component={AdminPage} />
 
       {/* Fallback to 404 */}
       <Route component={NotFound} />
