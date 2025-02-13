@@ -11,12 +11,16 @@ import SuiteCRMTest from "@/components/SuiteCRMTest";
 function Router() {
   return (
     <Switch>
-      {/* Add pages below */}
-      <Route path="/" component={() => (
+      {/* Main homepage route */}
+      <Route path="/" component={HomePage} />
+
+      {/* SuiteCRM test page moved to /crm-test route */}
+      <Route path="/crm-test" component={() => (
         <div className="container mx-auto py-8">
           <SuiteCRMTest />
         </div>
       )} />
+
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>

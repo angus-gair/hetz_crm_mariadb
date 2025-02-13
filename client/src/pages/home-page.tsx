@@ -10,48 +10,48 @@ export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-1">
-        {/* Hero section - Primary background */}
-        <section id="home" className="bg-background">
+        {/* Hero section */}
+        <section className="bg-background">
           <Hero />
         </section>
 
-        {/* Portfolio section - Secondary background */}
-        <section id="portfolio" className="py-20 bg-secondary">
+        {/* Gallery section */}
+        <section className="py-20 bg-secondary/10">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <GalleryGrid />
           </div>
         </section>
 
-        {/* Features section - Primary background */}
-        <section id="features" className="py-20 bg-background">
+        {/* Features section */}
+        <section className="py-20 bg-background">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <Features />
           </div>
         </section>
 
-        {/* Testimonials section - Secondary background */}
-        <section id="testimonials" className="py-20 bg-secondary">
+        {/* Testimonials section */}
+        <section className="py-20 bg-secondary/10">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <Testimonials />
           </div>
         </section>
 
-        {/* Team section - Primary background */}
-        <section id="team" className="py-20 bg-background">
+        {/* Team section */}
+        <section className="py-20 bg-background">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <TeamSection />
           </div>
         </section>
 
-        {/* Connect section - Secondary background */}
-        <section id="connect" className="py-20 bg-secondary">
+        {/* Connect section */}
+        <section className="py-20 bg-secondary/10">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <ConnectWithUs />
           </div>
         </section>
 
-        {/* Consultation section - Primary background */}
-        <section id="consultation" className="py-20 bg-background">
+        {/* Consultation section */}
+        <section className="py-20 bg-background">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <ConsultationScheduler />
           </div>
