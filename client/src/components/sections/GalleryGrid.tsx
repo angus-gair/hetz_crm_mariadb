@@ -15,42 +15,42 @@ const galleryItems: GalleryItem[] = [
     id: "1",
     title: "Enchanted Castle",
     description: "A magical castle-themed cubby house with climbing features",
-    image: "/images/portfolio/cubby1.jpg",
+    image: "https://picsum.photos/800/600?random=1",
     category: "Castle"
   },
   {
     id: "2",
     title: "Forest Retreat",
     description: "Natural wood finish with integrated outdoor play area",
-    image: "/images/portfolio/cubby2.jpg",
+    image: "https://picsum.photos/800/600?random=2",
     category: "Modern"
   },
   {
     id: "3",
     title: "Seaside Haven",
     description: "Beach-inspired design with weatherproof features",
-    image: "/images/portfolio/cubby3.jpg",
+    image: "https://picsum.photos/800/600?random=3",
     category: "Cottage"
   },
   {
     id: "4",
     title: "Woodland Lodge",
     description: "Rustic design with natural elements",
-    image: "/images/portfolio/cubby4.jpg",
+    image: "https://picsum.photos/800/600?random=4",
     category: "Modern"
   },
   {
     id: "5",
     title: "Princess Palace",
     description: "Elegant design with royal touches",
-    image: "/images/portfolio/cubby5.jpg",
+    image: "https://picsum.photos/800/600?random=5",
     category: "Castle"
   },
   {
     id: "6",
     title: "Coastal Retreat",
     description: "Beachside inspired playhouse",
-    image: "/images/portfolio/cubby6.jpg",
+    image: "https://picsum.photos/800/600?random=6",
     category: "Cottage"
   }
 ];
