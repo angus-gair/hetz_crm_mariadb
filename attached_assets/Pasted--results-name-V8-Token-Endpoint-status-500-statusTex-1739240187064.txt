@@ -1,0 +1,95 @@
+{
+  "results": [
+    {
+      "name": "V8 Token Endpoint",
+      "status": 500,
+      "statusText": "Internal Server Error",
+      "data": "",
+      "headers": {
+        "date": "Tue, 11 Feb 2025 02:16:20 GMT",
+        "server": "Apache",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "POST, GET, OPTIONS, PUT, DELETE",
+        "access-control-allow-headers": "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With",
+        "x-content-type-options": "nosniff",
+        "content-length": "0",
+        "connection": "close",
+        "content-type": "text/html; charset=UTF-8"
+      },
+      "method": "get"
+    },
+    {
+      "name": "V8 OAuth Endpoint",
+      "status": 500,
+      "statusText": "Internal Server Error",
+      "data": "",
+      "headers": {
+        "date": "Tue, 11 Feb 2025 02:16:20 GMT",
+        "server": "Apache",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "POST, GET, OPTIONS, PUT, DELETE",
+        "access-control-allow-headers": "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With",
+        "x-content-type-options": "nosniff",
+        "content-length": "0",
+        "connection": "close",
+        "content-type": "text/html; charset=UTF-8"
+      },
+      "method": "post"
+    },
+    {
+      "name": "Legacy API Endpoint",
+      "status": 500,
+      "statusText": "Internal Server Error",
+      "data": "",
+      "headers": {
+        "date": "Tue, 11 Feb 2025 02:16:20 GMT",
+        "server": "Apache",
+        "content-length": "0",
+        "connection": "close",
+        "content-type": "text/html; charset=UTF-8"
+      },
+      "method": "post"
+    },
+    {
+      "name": "API Config Check",
+      "status": 500,
+      "statusText": "Internal Server Error",
+      "data": "",
+      "headers": {
+        "date": "Tue, 11 Feb 2025 02:16:20 GMT",
+        "server": "Apache",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "POST, GET, OPTIONS, PUT, DELETE",
+        "access-control-allow-headers": "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With",
+        "x-content-type-options": "nosniff",
+        "content-length": "0",
+        "connection": "close",
+        "content-type": "text/html; charset=UTF-8"
+      },
+      "method": "get"
+    },
+    {
+      "name": "OAuth Public Key Check",
+      "status": 500,
+      "statusText": "Internal Server Error",
+      "data": "",
+      "headers": {
+        "date": "Tue, 11 Feb 2025 02:16:20 GMT",
+        "server": "Apache",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "POST, GET, OPTIONS, PUT, DELETE",
+        "access-control-allow-headers": "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With",
+        "x-content-type-options": "nosniff",
+        "content-length": "0",
+        "connection": "close",
+        "content-type": "text/html; charset=UTF-8"
+      },
+      "method": "get"
+    }
+  ],
+  "serverTime": "2025-02-11T02:16:21.192Z",
+  "serverInfo": {
+    "nodeVersion": "v20.18.1",
+    "platform": "linux"
+  }
+}

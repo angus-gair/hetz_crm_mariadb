@@ -1,0 +1,85 @@
+2025-02-01T23:12:37.787794Z	   33 Connect	suitecrm_user@34.73.61.247 on suitecrm using TCP/IP
+2025-02-01T23:12:37.865337Z	   34 Connect	suitecrm_user@34.73.61.247 on suitecrm using TCP/IP
+2025-02-01T23:13:32.655085Z	   35 Connect	suitecrm_user@34.73.61.247 on suitecrm using TCP/IP
+2025-02-01T23:13:32.734076Z	   36 Connect	suitecrm_user@34.73.61.247 on suitecrm using TCP/IP
+2025-02-01T23:13:59.998411Z	   37 Connect	suitecrm_user@34.73.61.247 on suitecrm using TCP/IP
+2025-02-01T23:14:00.076748Z	   38 Connect	suitecrm_user@34.73.61.247 on suitecrm using TCP/IP
+2025-02-01T23:14:00.097670Z	   38 Prepare	DESCRIBE contacts
+2025-02-01T23:14:00.117112Z	   38 Execute	DESCRIBE contacts
+2025-02-01T23:21:15.765589Z	   39 Connect	suitecrm_user@172.18.0.3 on suitecrm using TCP/IP
+2025-02-01T23:21:15.765906Z	   39 Init DB	suitecrm
+2025-02-01T23:21:15.766108Z	   39 Query	SET NAMES utf8
+2025-02-01T23:21:15.766321Z	   39 Query	SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode, 'STRICT_TRANS_TABLES', ''))
+2025-02-01T23:21:15.766606Z	   39 Query	SELECT id, name, symbol, conversion_rate FROM currencies WHERE status = 'Active' and deleted = 0
+2025-02-01T23:21:15.768302Z	   39 Query	SELECT category, name, value FROM config
+2025-02-01T23:21:15.768677Z	   39 Query	SELECT id FROM outbound_email WHERE type = 'system' AND deleted = 0
+2025-02-01T23:21:15.768986Z	   39 Query	SELECT * FROM outbound_email WHERE id = '29bb1a81-2532-3bfa-2b28-679d007ae95a'
+2025-02-01T23:21:15.857981Z	   39 Quit	
+2025-02-01T23:25:10.620693Z	   40 Connect	suitecrm_user@172.18.0.3 on suitecrm using TCP/IP
+2025-02-01T23:25:10.620981Z	   40 Init DB	suitecrm
+2025-02-01T23:25:10.621179Z	   40 Query	SET NAMES utf8
+2025-02-01T23:25:10.621399Z	   40 Query	SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode, 'STRICT_TRANS_TABLES', ''))
+2025-02-01T23:25:10.621675Z	   40 Query	SELECT id, name, symbol, conversion_rate FROM currencies WHERE status = 'Active' and deleted = 0
+2025-02-01T23:25:10.623433Z	   40 Query	SELECT category, name, value FROM config
+2025-02-01T23:25:10.623830Z	   40 Query	SELECT id FROM outbound_email WHERE type = 'system' AND deleted = 0
+2025-02-01T23:25:10.624136Z	   40 Query	SELECT * FROM outbound_email WHERE id = '29bb1a81-2532-3bfa-2b28-679d007ae95a'
+2025-02-01T23:25:10.778890Z	   40 Query	SELECT users.* FROM users  WHERE users.id = '1' AND users.deleted=0 LIMIT 0,1
+2025-02-01T23:25:10.779802Z	   40 Query	SELECT id, first_name, last_name, user_name FROM users WHERE 1=1 ORDER BY  user_name ASC
+2025-02-01T23:25:10.780162Z	   40 Query	SELECT u1.first_name, u1.last_name from users  u1, users  u2 where u1.id = u2.reports_to_id AND u2.id = '1' and u1.deleted=0
+2025-02-01T23:25:10.787274Z	   40 Query	SELECT 
+                    ea.email_address,
+                    ea.email_address_caps,
+                    ea.invalid_email,
+                    ea.opt_out,
+                    ea.confirm_opt_in,
+                    ea.date_created,
+                    ea.date_modified,
+                    ear.id,
+                    ear.email_address_id,
+                    ear.bean_id,
+                    ear.bean_module,
+                    ear.primary_address,
+                    ear.reply_to_address,
+                    ear.deleted
+                FROM email_addresses ea LEFT JOIN email_addr_bean_rel ear ON ea.id = ear.email_address_id
+                WHERE 
+                    ear.bean_module = 'Users'
+                    AND ear.bean_id = '1'
+                    AND ear.deleted = 0
+                ORDER BY ear.reply_to_address, ear.primary_address DESC
+2025-02-01T23:25:10.787981Z	   40 Query	SELECT contents FROM user_preferences WHERE assigned_user_id='1' AND category = 'global' AND deleted = 0
+2025-02-01T23:25:10.790683Z	   40 Quit	
+2025-02-01T23:42:42.588394Z	   42 Connect	suitecrm_user@172.18.0.3 on suitecrm using TCP/IP
+2025-02-01T23:42:42.588728Z	   42 Init DB	suitecrm
+2025-02-01T23:42:42.588950Z	   42 Query	SET NAMES utf8
+2025-02-01T23:42:42.589180Z	   42 Query	SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode, 'STRICT_TRANS_TABLES', ''))
+2025-02-01T23:42:42.589440Z	   42 Query	SELECT id, name, symbol, conversion_rate FROM currencies WHERE status = 'Active' and deleted = 0
+2025-02-01T23:42:42.591246Z	   42 Query	SELECT category, name, value FROM config
+2025-02-01T23:42:42.591642Z	   42 Query	SELECT id FROM outbound_email WHERE type = 'system' AND deleted = 0
+2025-02-01T23:42:42.591952Z	   42 Query	SELECT * FROM outbound_email WHERE id = '29bb1a81-2532-3bfa-2b28-679d007ae95a'
+2025-02-01T23:42:42.746061Z	   42 Query	SELECT users.* FROM users  WHERE users.id = '1' AND users.deleted=0 LIMIT 0,1
+2025-02-01T23:42:42.747074Z	   42 Query	SELECT id, first_name, last_name, user_name FROM users WHERE 1=1 ORDER BY  user_name ASC
+2025-02-01T23:42:42.747496Z	   42 Query	SELECT u1.first_name, u1.last_name from users  u1, users  u2 where u1.id = u2.reports_to_id AND u2.id = '1' and u1.deleted=0
+2025-02-01T23:42:42.756054Z	   42 Query	SELECT 
+                    ea.email_address,
+                    ea.email_address_caps,
+                    ea.invalid_email,
+                    ea.opt_out,
+                    ea.confirm_opt_in,
+                    ea.date_created,
+                    ea.date_modified,
+                    ear.id,
+                    ear.email_address_id,
+                    ear.bean_id,
+                    ear.bean_module,
+                    ear.primary_address,
+                    ear.reply_to_address,
+                    ear.deleted
+                FROM email_addresses ea LEFT JOIN email_addr_bean_rel ear ON ea.id = ear.email_address_id
+                WHERE 
+                    ear.bean_module = 'Users'
+                    AND ear.bean_id = '1'
+                    AND ear.deleted = 0
+                ORDER BY ear.reply_to_address, ear.primary_address DESC
+2025-02-01T23:42:42.756741Z	   42 Query	SELECT contents FROM user_preferences WHERE assigned_user_id='1' AND category = 'global' AND deleted = 0
+2025-02-01T23:42:42.760331Z	   42 Quit	
