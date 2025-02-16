@@ -2,51 +2,77 @@ import { Resolver, Query, Mutation, Arg } from "type-graphql";
 import axios from "axios";
 import { SuiteCRMConnection } from "./types";
 
-const SUITECRM_URL = process.env.SUITECRM_URL || 'http://172.19.0.2:8080';
+const SUITECRM_URL = process.env.SUITECRM_URL;
 const CLIENT_ID = process.env.SUITECRM_CLIENT_ID;
 const CLIENT_SECRET = process.env.SUITECRM_CLIENT_SECRET;
+
+if (!SUITECRM_URL || !CLIENT_ID || !CLIENT_SECRET) {
+  console.error('Missing required SuiteCRM environment variables');
+}
 
 @Resolver()
 export class SuiteCRMResolver {
   private accessToken: string | null = null;
   private tokenExpiry: number | null = null;
+  private refreshPromise: Promise<string> | null = null;
 
-  private async ensureToken(): Promise<string> {
-    if (!this.accessToken || !this.tokenExpiry || Date.now() >= (this.tokenExpiry - 300000)) {
-      if (!CLIENT_ID || !CLIENT_SECRET) {
-        throw new Error('SuiteCRM client credentials not configured');
-      }
-
-      try {
-        const response = await axios.post(`${SUITECRM_URL}/Api/V8/oauth2/token`, {
-          grant_type: 'client_credentials',
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET
-        }, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/vnd.api+json'
-          }
-        });
-
-        if (!response.data.access_token) {
-          throw new Error('No access token received');
-        }
-
-        this.accessToken = response.data.access_token;
-        this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
-        return this.accessToken;
-      } catch (error: any) {
-        console.error('Failed to obtain OAuth token:', error.message);
-        throw new Error(`Authentication failed: ${error.message}`);
-      }
+  private async getValidToken(): Promise<string> {
+    // If there's already a refresh in progress, wait for it
+    if (this.refreshPromise) {
+      return this.refreshPromise;
     }
-    return this.accessToken;
+
+    // If token is still valid, return it
+    if (this.accessToken && this.tokenExpiry && Date.now() < (this.tokenExpiry - 300000)) {
+      return this.accessToken;
+    }
+
+    // Start a new refresh
+    this.refreshPromise = this.refreshToken();
+    try {
+      return await this.refreshPromise;
+    } finally {
+      this.refreshPromise = null;
+    }
+  }
+
+  private async refreshToken(): Promise<string> {
+    if (!CLIENT_ID || !CLIENT_SECRET) {
+      throw new Error('SuiteCRM client credentials not configured');
+    }
+
+    try {
+      console.log('Refreshing SuiteCRM OAuth token...');
+      const response = await axios.post(`${SUITECRM_URL}/Api/V8/oauth2/token`, {
+        grant_type: 'client_credentials',
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/vnd.api+json'
+        }
+      });
+
+      if (!response.data.access_token) {
+        throw new Error('No access token received');
+      }
+
+      this.accessToken = response.data.access_token;
+      this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
+      console.log('Successfully refreshed OAuth token');
+      return this.accessToken;
+    } catch (error: any) {
+      console.error('Failed to obtain OAuth token:', error.message);
+      this.accessToken = null;
+      this.tokenExpiry = null;
+      throw new Error(`Authentication failed: ${error.message}`);
+    }
   }
 
   private async makeRequest(endpoint: string, options: any = {}) {
     try {
-      const token = await this.ensureToken();
+      const token = await this.getValidToken();
       const response = await axios({
         ...options,
         url: `${SUITECRM_URL}${endpoint}`,
@@ -59,6 +85,11 @@ export class SuiteCRMResolver {
       });
       return response.data;
     } catch (error: any) {
+      if (error.response?.status === 401) {
+        // Clear token on unauthorized to force a refresh on next attempt
+        this.accessToken = null;
+        this.tokenExpiry = null;
+      }
       console.error(`API Request failed for ${endpoint}:`, error.message);
       throw new Error(`API request failed: ${error.message}`);
     }
@@ -71,7 +102,7 @@ export class SuiteCRMResolver {
         name: 'V8 OAuth Endpoint',
         test: async () => {
           try {
-            const token = await this.ensureToken();
+            await this.getValidToken();
             return { success: true, message: 'OAuth token obtained successfully' };
           } catch (error: any) {
             return { success: false, message: error.message };

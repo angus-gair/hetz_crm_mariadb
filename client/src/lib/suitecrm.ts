@@ -8,6 +8,7 @@ export class SuiteCRMClient {
   private axiosInstance;
   private accessToken: string | null = null;
   private tokenExpiry: number | null = null;
+  private refreshPromise: Promise<void> | null = null;
 
   constructor() {
     this.axiosInstance = axios.create({
@@ -23,7 +24,7 @@ export class SuiteCRMClient {
       async (config) => {
         // Check if we need to refresh the token
         if (this.shouldRefreshToken()) {
-          await this.refreshToken();
+          await this.getValidToken();
         }
 
         if (this.accessToken) {
@@ -49,7 +50,7 @@ export class SuiteCRMClient {
           if (error.response.status === 401 && !error.config._retry) {
             error.config._retry = true;
             try {
-              await this.refreshToken();
+              await this.getValidToken();
               return this.axiosInstance(error.config);
             } catch (refreshError) {
               console.error('Token refresh failed:', refreshError);
@@ -66,6 +67,22 @@ export class SuiteCRMClient {
     if (!this.accessToken || !this.tokenExpiry) return true;
     // Refresh if token expires in less than 5 minutes
     return Date.now() >= (this.tokenExpiry - 300000);
+  }
+
+  private async getValidToken(): Promise<void> {
+    // If there's already a refresh in progress, wait for it
+    if (this.refreshPromise) {
+      await this.refreshPromise;
+      return;
+    }
+
+    // Start a new refresh
+    this.refreshPromise = this.refreshToken();
+    try {
+      await this.refreshPromise;
+    } finally {
+      this.refreshPromise = null;
+    }
   }
 
   private async refreshToken(): Promise<void> {
