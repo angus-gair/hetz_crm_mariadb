@@ -1,5 +1,5 @@
 <?php
-// created: 2025-02-10 15:05:21
+// created: 2025-02-16 14:01:08
 $Diagnostic = array (
   'addAjaxBannedModules' => 
   array (
@@ -41,11 +41,11 @@ $Diagnostic = array (
   'aop' => 
   array (
     'distribution_method' => 'roundRobin',
-    'case_closure_email_template_id' => 'ea7bae3b-14d5-277d-e873-67a8debdd3b2',
-    'joomla_account_creation_email_template_id' => 'ec9ef996-16d5-23bb-531c-67a8dead5fb0',
-    'case_creation_email_template_id' => 'efc92442-d68d-757d-60ff-67a8de043930',
-    'contact_email_template_id' => 'f2bb3331-35b4-8fe4-854f-67a8debe0315',
-    'user_email_template_id' => '1bcc0e62-c0c7-a00b-37ae-67a8de11fecf',
+    'case_closure_email_template_id' => '7f7e8c38-8c75-18de-be98-67ae269cad8b',
+    'joomla_account_creation_email_template_id' => '8465bec1-9d39-a045-69ab-67ae261c2179',
+    'case_creation_email_template_id' => '88e94922-ba09-d0f9-94c3-67ae26fe6351',
+    'contact_email_template_id' => '8ebd247f-59da-4e21-d40f-67ae262a77a9',
+    'user_email_template_id' => '99096a2e-0a2f-17aa-04c2-67ae26287423',
   ),
   'aos' => 
   array (
@@ -185,7 +185,7 @@ $Diagnostic = array (
   'display_inbound_email_buttons' => false,
   'dump_slow_queries' => false,
   'email_address_separator' => ',',
-  'email_confirm_opt_in_email_template_id' => 'd9d6f549-9141-9e6a-d593-67a8de86ccd0',
+  'email_confirm_opt_in_email_template_id' => '33925382-517b-0854-d84b-67ae262c07d3',
   'email_default_client' => 'sugar',
   'email_default_delete_attachments' => true,
   'email_default_editor' => 'html',
@@ -298,13 +298,13 @@ $Diagnostic = array (
     'l s f' => 'l s f',
     'l f s' => 'l f s',
   ),
-  'oauth2_encryption_key' => 'LeWV48dmPhjFz/es2xWeUIXPhAlZy5FOr77BGWsp0A0=',
+  'oauth2_encryption_key' => 'IF2SZD8M92/u2DG1t8q+YT+kVfmuS2eJ1RkAcYkdm8E=',
   'passwordsetting' => 
   array (
     'SystemGeneratedPasswordON' => '',
-    'generatepasswordtmpl' => 'ccd8258f-0f4a-e557-87dd-67a8dee191aa',
-    'lostpasswordtmpl' => 'cfafb1e1-111a-ffc0-fd4f-67a8de9c3deb',
-    'factoremailtmpl' => 'd200b805-f0b9-34b2-e5af-67a8ded41587',
+    'generatepasswordtmpl' => '4cd8b5ab-ef87-7ca5-93ef-67ae261a333e',
+    'lostpasswordtmpl' => '552821ec-22a5-bf48-51e4-67ae264e174f',
+    'factoremailtmpl' => '5bcdf0f0-e547-6eb3-077e-67ae26ccf4e5',
     'forgotpasswordON' => false,
     'linkexpiration' => '1',
     'linkexpirationtime' => '30',
@@ -352,7 +352,7 @@ $Diagnostic = array (
       'host' => 'localhost',
       'user' => '',
       'pass' => '',
-      'index' => 'da3f7a4e44a346ad77e1cb2ae028a513',
+      'index' => '65486d89e52b61195db14bb4e808bdbe',
       'search_wildcard_char' => '%',
       'search_wildcard_infront' => true,
     ),
@@ -391,7 +391,7 @@ $Diagnostic = array (
   'suitecrm_version' => NULL,
   'system_email_templates' => 
   array (
-    'confirm_opt_in_template_id' => 'd9d6f549-9141-9e6a-d593-67a8de86ccd0',
+    'confirm_opt_in_template_id' => '33925382-517b-0854-d84b-67ae262c07d3',
   ),
   'system_name' => 'SuiteCRM',
   'time_formats' => 
@@ -414,7 +414,7 @@ $Diagnostic = array (
   'trusted_hosts' => 
   array (
   ),
-  'unique_key' => 'da3f7a4e44a346ad77e1cb2ae028a513',
+  'unique_key' => '65486d89e52b61195db14bb4e808bdbe',
   'upload_badext' => 
   array (
     0 => 'php',
@@ -461,4 +461,6 @@ $Diagnostic = array (
   'web_to_lead_allowed_redirect_hosts' => 
   array (
   ),
+  'email_allow_send_as_user' => false,
+  'email_xss' => 'YToxMzp7czo2OiJhcHBsZXQiO3M6NjoiYXBwbGV0IjtzOjQ6ImJhc2UiO3M6NDoiYmFzZSI7czo1OiJlbWJlZCI7czo1OiJlbWJlZCI7czo0OiJmb3JtIjtzOjQ6ImZvcm0iO3M6NToiZnJhbWUiO3M6NToiZnJhbWUiO3M6ODoiZnJhbWVzZXQiO3M6ODoiZnJhbWVzZXQiO3M6NjoiaWZyYW1lIjtzOjY6ImlmcmFtZSI7czo2OiJpbXBvcnQiO3M6ODoiXD9pbXBvcnQiO3M6NToibGF5ZXIiO3M6NToibGF5ZXIiO3M6NDoibGluayI7czo0OiJsaW5rIjtzOjY6Im9iamVjdCI7czo2OiJvYmplY3QiO3M6MzoieG1wIjtzOjM6InhtcCI7czo2OiJzY3JpcHQiO3M6Njoic2NyaXB0Ijt9',
 );
