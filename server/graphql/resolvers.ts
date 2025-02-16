@@ -2,120 +2,115 @@ import { Resolver, Query, Mutation, Arg } from "type-graphql";
 import axios from "axios";
 import { SuiteCRMConnection, SuiteCRMCredentials } from "./types";
 
-// Use Docker container's internal network address
 const SUITECRM_URL = process.env.SUITECRM_URL || 'http://172.19.0.2:8080';
-const CLIENT_ID = '3d55a713-12be-62ea-c814-67aaf6faa94f';
-const CLIENT_SECRET = 'a4e27aa43c190b48b250c2e59f322761971eabfab923d1db8e86bcaecc7b1d08';
+const CLIENT_ID = process.env.SUITECRM_CLIENT_ID || '3d55a713-12be-62ea-c814-67aaf6faa94f';
+const CLIENT_SECRET = process.env.SUITECRM_CLIENT_SECRET || 'a4e27aa43c190b48b250c2e59f322761971eabfab923d1db8e86bcaecc7b1d08';
+
+let accessToken: string | null = null;
+let tokenExpiry: number | null = null;
 
 @Resolver()
 export class SuiteCRMResolver {
+  private async ensureToken(): Promise<string> {
+    if (!accessToken || !tokenExpiry || Date.now() >= (tokenExpiry - 300000)) {
+      try {
+        const response = await axios.post(`${SUITECRM_URL}/Api/V8/oauth2/token`, {
+          grant_type: 'client_credentials',
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.api+json'
+          }
+        });
+
+        accessToken = response.data.access_token;
+        tokenExpiry = Date.now() + (response.data.expires_in * 1000);
+      } catch (error: any) {
+        console.error('Failed to obtain OAuth token:', error.message);
+        throw new Error('Authentication failed');
+      }
+    }
+    return accessToken;
+  }
+
+  private async makeRequest(endpoint: string, options: any = {}) {
+    try {
+      const token = await this.ensureToken();
+      const response = await axios({
+        ...options,
+        url: `${SUITECRM_URL}${endpoint}`,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.api+json',
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error(`API Request failed for ${endpoint}:`, error.message);
+      throw error;
+    }
+  }
+
   @Query(() => SuiteCRMConnection)
   async testSuiteCRMConnection(): Promise<SuiteCRMConnection> {
     const endpoints = [
       {
-        name: 'V8 Token Endpoint',
-        url: `${SUITECRM_URL}/Api/V8/meta/now`,
-        method: 'get' as const,
-        headers: {
-          'Accept': 'application/vnd.api+json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
-        }
-      },
-      {
         name: 'V8 OAuth Endpoint',
-        url: `${SUITECRM_URL}/Api/V8/oauth2/token`,
-        method: 'post' as const,
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
-        },
-        data: {
-          grant_type: 'client_credentials',
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET
+        test: async () => {
+          try {
+            await this.ensureToken();
+            return { success: true, message: 'OAuth token obtained successfully' };
+          } catch (error: any) {
+            return { success: false, message: error.message };
+          }
         }
       },
       {
-        name: 'Legacy API Endpoint',
-        url: `${SUITECRM_URL}/service/v4_1/rest.php`,
-        method: 'post' as const,
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
-        },
-        data: {
-          method: 'get_server_info',
-          input_type: 'JSON',
-          response_type: 'JSON',
-          rest_data: []
+        name: 'V8 Modules Endpoint',
+        test: async () => {
+          try {
+            await this.makeRequest('/Api/V8/meta/modules');
+            return { success: true, message: 'Modules endpoint accessible' };
+          } catch (error: any) {
+            return { success: false, message: error.message };
+          }
         }
       },
       {
-        name: 'API Config Check',
-        url: `${SUITECRM_URL}/Api/V8/meta/config`,
-        method: 'get' as const,
-        headers: {
-          'Accept': 'application/vnd.api+json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
-        }
-      },
-      {
-        name: 'OAuth Public Key Check',
-        url: `${SUITECRM_URL}/Api/V8/oauth2/publickey`,
-        method: 'get' as const,
-        headers: {
-          'Accept': 'application/vnd.api+json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
+        name: 'V8 Meta Now Endpoint',
+        test: async () => {
+          try {
+            await this.makeRequest('/Api/V8/meta/now');
+            return { success: true, message: 'Server time endpoint accessible' };
+          } catch (error: any) {
+            return { success: false, message: error.message };
+          }
         }
       }
     ];
 
     try {
       console.log('Testing SuiteCRM connection with URL:', SUITECRM_URL);
+
       const results = await Promise.all(
-        endpoints.map(async endpoint => {
-          try {
-            console.log(`Testing endpoint: ${endpoint.name} at ${endpoint.url}`);
-            const response = await axios({
-              method: endpoint.method,
-              url: endpoint.url,
-              headers: endpoint.headers,
-              data: endpoint.data,
-              timeout: 5000,
-              validateStatus: null
-            });
-
-            console.log(`Response for ${endpoint.name}:`, {
-              status: response.status,
-              statusText: response.statusText,
-              data: response.data
-            });
-
-            return {
-              name: endpoint.name,
-              status: response.status,
-              statusText: response.statusText,
-              data: response.data,
-              error: response.status >= 400 ? 'Request failed' : undefined
-            };
-          } catch (error: any) {
-            console.error(`Error testing ${endpoint.name}:`, error.message);
-            return {
-              name: endpoint.name,
-              status: error.response?.status || 500,
-              statusText: error.response?.statusText || error.message,
-              error: error.message,
-              data: error.response?.data
-            };
-          }
+        endpoints.map(async (endpoint) => {
+          const result = await endpoint.test();
+          return {
+            name: endpoint.name,
+            status: result.success ? 200 : 500,
+            statusText: result.success ? 'OK' : 'Error',
+            data: result,
+            error: result.success ? undefined : result.message
+          };
         })
       );
 
       return new SuiteCRMConnection(
-        results.every(r => r.status < 400),
+        results.every(r => r.status === 200),
         results.some(r => r.error) ? 'Some endpoints failed' : 'All endpoints successful',
         results
       );
@@ -125,51 +120,6 @@ export class SuiteCRMResolver {
         false,
         error.message,
         []
-      );
-    }
-  }
-
-  @Mutation(() => SuiteCRMConnection)
-  async authenticateSuiteCRM(
-    @Arg("credentials", () => SuiteCRMCredentials) credentials: SuiteCRMCredentials
-  ): Promise<SuiteCRMConnection> {
-    try {
-      const response = await axios.post(
-        `${SUITECRM_URL}/Api/V8/oauth2/token`,
-        {
-          grant_type: 'client_credentials',
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
-          }
-        }
-      );
-
-      return new SuiteCRMConnection(
-        true,
-        'Authentication successful',
-        [{
-          name: 'Authentication',
-          status: response.status,
-          statusText: response.statusText,
-          data: response.data
-        }]
-      );
-    } catch (error: any) {
-      return new SuiteCRMConnection(
-        false,
-        error.message,
-        [{
-          name: 'Authentication',
-          status: error.response?.status || 500,
-          statusText: error.response?.statusText || error.message,
-          error: error.message,
-          data: error.response?.data
-        }]
       );
     }
   }
