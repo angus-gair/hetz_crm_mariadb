@@ -1,18 +1,22 @@
 import { Resolver, Query, Mutation, Arg } from "type-graphql";
 import axios from "axios";
-import { SuiteCRMConnection, SuiteCRMCredentials } from "./types";
+import { SuiteCRMConnection } from "./types";
 
 const SUITECRM_URL = process.env.SUITECRM_URL || 'http://172.19.0.2:8080';
-const CLIENT_ID = process.env.SUITECRM_CLIENT_ID || '3d55a713-12be-62ea-c814-67aaf6faa94f';
-const CLIENT_SECRET = process.env.SUITECRM_CLIENT_SECRET || 'a4e27aa43c190b48b250c2e59f322761971eabfab923d1db8e86bcaecc7b1d08';
-
-let accessToken: string | null = null;
-let tokenExpiry: number | null = null;
+const CLIENT_ID = process.env.SUITECRM_CLIENT_ID;
+const CLIENT_SECRET = process.env.SUITECRM_CLIENT_SECRET;
 
 @Resolver()
 export class SuiteCRMResolver {
+  private accessToken: string | null = null;
+  private tokenExpiry: number | null = null;
+
   private async ensureToken(): Promise<string> {
-    if (!accessToken || !tokenExpiry || Date.now() >= (tokenExpiry - 300000)) {
+    if (!this.accessToken || !this.tokenExpiry || Date.now() >= (this.tokenExpiry - 300000)) {
+      if (!CLIENT_ID || !CLIENT_SECRET) {
+        throw new Error('SuiteCRM client credentials not configured');
+      }
+
       try {
         const response = await axios.post(`${SUITECRM_URL}/Api/V8/oauth2/token`, {
           grant_type: 'client_credentials',
@@ -25,14 +29,19 @@ export class SuiteCRMResolver {
           }
         });
 
-        accessToken = response.data.access_token;
-        tokenExpiry = Date.now() + (response.data.expires_in * 1000);
+        if (!response.data.access_token) {
+          throw new Error('No access token received');
+        }
+
+        this.accessToken = response.data.access_token;
+        this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
+        return this.accessToken;
       } catch (error: any) {
         console.error('Failed to obtain OAuth token:', error.message);
-        throw new Error('Authentication failed');
+        throw new Error(`Authentication failed: ${error.message}`);
       }
     }
-    return accessToken;
+    return this.accessToken;
   }
 
   private async makeRequest(endpoint: string, options: any = {}) {
@@ -51,7 +60,7 @@ export class SuiteCRMResolver {
       return response.data;
     } catch (error: any) {
       console.error(`API Request failed for ${endpoint}:`, error.message);
-      throw error;
+      throw new Error(`API request failed: ${error.message}`);
     }
   }
 
@@ -62,7 +71,7 @@ export class SuiteCRMResolver {
         name: 'V8 OAuth Endpoint',
         test: async () => {
           try {
-            await this.ensureToken();
+            const token = await this.ensureToken();
             return { success: true, message: 'OAuth token obtained successfully' };
           } catch (error: any) {
             return { success: false, message: error.message };
@@ -109,9 +118,14 @@ export class SuiteCRMResolver {
         })
       );
 
+      const isSuccessful = results.every(r => r.status === 200);
+      const message = isSuccessful ? 
+        'All endpoints successful' : 
+        'Some endpoints failed: ' + results.filter(r => r.error).map(r => r.name).join(', ');
+
       return new SuiteCRMConnection(
-        results.every(r => r.status === 200),
-        results.some(r => r.error) ? 'Some endpoints failed' : 'All endpoints successful',
+        isSuccessful,
+        message,
         results
       );
     } catch (error: any) {

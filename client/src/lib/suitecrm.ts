@@ -3,12 +3,7 @@ import axios from 'axios';
 // In development, proxy through our Express server which will handle routing to SuiteCRM
 const SUITECRM_URL = '/api/suitecrm';
 
-// OAuth2 config - these should be moved to environment variables
-const OAUTH2_CONFIG = {
-  clientId: '3d55a713-12be-62ea-c814-67aaf6faa94f',
-  clientSecret: 'a4e27aa43c190b48b250c2e59f322761971eabfab923d1db8e86bcaecc7b1d08'
-};
-
+// OAuth2 config moved to environment variables
 export class SuiteCRMClient {
   private axiosInstance;
   private accessToken: string | null = null;
@@ -19,8 +14,7 @@ export class SuiteCRMClient {
       baseURL: SUITECRM_URL,
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/vnd.api+json',
-        'User-Agent': 'SuiteCRM-GraphQL-Client/1.0'
+        'Accept': 'application/vnd.api+json'
       }
     });
 
@@ -54,15 +48,16 @@ export class SuiteCRMClient {
           // If unauthorized and we have credentials, try to get a new token
           if (error.response.status === 401 && !error.config._retry) {
             error.config._retry = true;
-            await this.refreshToken();
-            return this.axiosInstance(error.config);
+            try {
+              await this.refreshToken();
+              return this.axiosInstance(error.config);
+            } catch (refreshError) {
+              console.error('Token refresh failed:', refreshError);
+              throw error;
+            }
           }
-        } else if (error.request) {
-          console.error('SuiteCRM API No Response:', error.request);
-        } else {
-          console.error('SuiteCRM API Error:', error.message);
         }
-        return Promise.reject(error);
+        throw error;
       }
     );
   }
@@ -75,14 +70,20 @@ export class SuiteCRMClient {
 
   private async refreshToken(): Promise<void> {
     try {
-      const response = await axios.post(`${SUITECRM_URL}/oauth2/token`, {
-        grant_type: 'client_credentials',
-        client_id: OAUTH2_CONFIG.clientId,
-        client_secret: OAUTH2_CONFIG.clientSecret
+      const response = await axios.post(`${SUITECRM_URL}/V8/oauth2/token`, {
+        grant_type: 'client_credentials'
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/vnd.api+json'
+        }
       });
 
+      if (!response.data.access_token) {
+        throw new Error('No access token received');
+      }
+
       this.accessToken = response.data.access_token;
-      // Set expiry time (current time + expires_in seconds)
       this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
     } catch (error) {
       console.error('Failed to refresh OAuth token:', error);
@@ -95,7 +96,7 @@ export class SuiteCRMClient {
   // Test connection and version
   async testConnection() {
     try {
-      const response = await this.axiosInstance.get('/meta/now');
+      const response = await this.axiosInstance.get('/V8/meta/now');
       return response.data;
     } catch (error) {
       console.error('Failed to connect to SuiteCRM V8 API');
@@ -134,18 +135,43 @@ export class SuiteCRMClient {
     }
   }
 
-  async login(username: string, password: string) {
+  async createRecord(moduleName: string, data: any) {
     try {
-      const response = await this.axiosInstance.post('/oauth2/token', {
-        grant_type: 'password',
-        username,
-        password,
-        client_id: 'sugar',
-        platform: 'base'
+      const response = await this.axiosInstance.post('/V8/module', {
+        data: {
+          type: moduleName,
+          attributes: data
+        }
       });
       return response.data;
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error(`Failed to create record in module ${moduleName}:`, error);
+      throw error;
+    }
+  }
+
+  async updateRecord(moduleName: string, id: string, data: any) {
+    try {
+      const response = await this.axiosInstance.patch('/V8/module', {
+        data: {
+          type: moduleName,
+          id: id,
+          attributes: data
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to update record ${id} in module ${moduleName}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteRecord(moduleName: string, id: string) {
+    try {
+      await this.axiosInstance.delete(`/V8/module/${moduleName}/${id}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete record ${id} from module ${moduleName}:`, error);
       throw error;
     }
   }
