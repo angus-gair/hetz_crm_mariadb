@@ -6,6 +6,10 @@ import { buildSchema } from "type-graphql";
 import { SuiteCRMResolver } from "./graphql/resolvers";
 import { validateConfig } from "./config";
 import { initDatabase } from "./database";
+import axios from "axios";
+
+const SUITECRM_API_URL = "http://5.75.135.254/custom-api/api-proxy.php";
+const API_TOKEN = "c038c571a0f0dc8ff2b1c89e9545dcd5d4e13319cf63c0657c1d39e0fefd24aa";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Validate config and initialize database
@@ -31,6 +35,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
   apiRouter.get('/health', (req, res) => {
     res.json({ status: 'ok' });
+  });
+
+  // CRM Contact Form Proxy
+  apiRouter.post('/crm/contacts', async (req, res) => {
+    try {
+      const response = await axios.post(`${SUITECRM_API_URL}/contacts`, req.body, {
+        headers: {
+          'Authorization': `Bearer ${API_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      res.status(response.status).json(response.data);
+    } catch (error) {
+      console.error('CRM API Error:', error);
+
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status || 500;
+        const message = error.response?.data?.message || 'An error occurred while processing your request';
+        res.status(status).json({ message });
+      } else {
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    }
   });
 
   // Mount GraphQL endpoint

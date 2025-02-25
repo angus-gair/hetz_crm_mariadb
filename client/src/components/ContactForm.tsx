@@ -34,7 +34,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
-const SUITECRM_API_URL = "http://5.75.135.254/custom-api/api-proxy.php"
+// Use environment variables or configuration for these values
 const API_TOKEN = "c038c571a0f0dc8ff2b1c89e9545dcd5d4e13319cf63c0657c1d39e0fefd24aa"
 
 export default function ContactForm() {
@@ -55,29 +55,36 @@ export default function ContactForm() {
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const response = await fetch(`${SUITECRM_API_URL}/contacts`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${API_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          first_name: data.firstName,
-          last_name: data.lastName,
-          email: data.email,
-          phone_mobile: data.phone,
-          description: data.notes,
-          marketing_consent: data.marketingConsent,
-          lead_source: data.leadSource
+      try {
+        const response = await fetch('/api/crm/contacts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CRM-Token': API_TOKEN
+          },
+          body: JSON.stringify({
+            first_name: data.firstName,
+            last_name: data.lastName,
+            email: data.email,
+            phone_mobile: data.phone,
+            description: data.notes,
+            marketing_consent: data.marketingConsent,
+            lead_source: data.leadSource
+          })
         })
-      })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to submit form')
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Failed to submit form')
+        }
+
+        return response.json()
+      } catch (error) {
+        if (error instanceof Error) {
+          throw error
+        }
+        throw new Error('Network error occurred. Please try again.')
       }
-
-      return response.json()
     },
     onSuccess: () => {
       toast({
