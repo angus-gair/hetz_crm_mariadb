@@ -55,6 +55,8 @@ export default function ContactForm() {
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
+      console.log('Submitting contact form with data:', data);
+
       try {
         const response = await fetch('/api/crm/contacts', {
           method: 'POST',
@@ -75,18 +77,23 @@ export default function ContactForm() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
+          console.error('Form submission failed:', errorData);
           throw new Error(errorData.message || 'Failed to submit form')
         }
 
-        return response.json()
+        const result = await response.json()
+        console.log('Form submission successful:', result);
+        return result
       } catch (error) {
+        console.error('Form submission error:', error);
         if (error instanceof Error) {
           throw error
         }
         throw new Error('Network error occurred. Please try again.')
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Mutation succeeded with data:', data);
       toast({
         title: "Success",
         description: "Thank you for contacting us. We'll be in touch soon!",
@@ -94,6 +101,7 @@ export default function ContactForm() {
       form.reset()
     },
     onError: (error) => {
+      console.error('Mutation failed:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to submit form. Please try again.",
@@ -121,7 +129,7 @@ export default function ContactForm() {
                   <FormLabel>First Name</FormLabel>
                   <FormControl>
                     <Input {...field} className={`${
-                      form.formState.errors.firstName ? 'border-red-500' : 
+                      form.formState.errors.firstName ? 'border-red-500' :
                       field.value ? 'border-green-500' : ''
                     }`} />
                   </FormControl>
@@ -138,7 +146,7 @@ export default function ContactForm() {
                   <FormLabel>Last Name</FormLabel>
                   <FormControl>
                     <Input {...field} className={`${
-                      form.formState.errors.lastName ? 'border-red-500' : 
+                      form.formState.errors.lastName ? 'border-red-500' :
                       field.value ? 'border-green-500' : ''
                     }`} />
                   </FormControl>
@@ -155,7 +163,7 @@ export default function ContactForm() {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input type="email" {...field} className={`${
-                      form.formState.errors.email ? 'border-red-500' : 
+                      form.formState.errors.email ? 'border-red-500' :
                       field.value ? 'border-green-500' : ''
                     }`} />
                   </FormControl>
@@ -172,7 +180,7 @@ export default function ContactForm() {
                   <FormLabel>Phone Number</FormLabel>
                   <FormControl>
                     <Input type="tel" {...field} className={`${
-                      form.formState.errors.phone ? 'border-red-500' : 
+                      form.formState.errors.phone ? 'border-red-500' :
                       field.value ? 'border-green-500' : ''
                     }`} />
                   </FormControl>
@@ -189,7 +197,7 @@ export default function ContactForm() {
                   <FormLabel>Message</FormLabel>
                   <FormControl>
                     <Textarea {...field} className={`${
-                      form.formState.errors.notes ? 'border-red-500' : 
+                      form.formState.errors.notes ? 'border-red-500' :
                       field.value ? 'border-green-500' : ''
                     }`} />
                   </FormControl>
@@ -204,7 +212,7 @@ export default function ContactForm() {
               render={({ field }) => (
                 <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                   <FormControl>
-                    <Checkbox 
+                    <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}
                     />
@@ -218,8 +226,8 @@ export default function ContactForm() {
               )}
             />
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full"
               disabled={mutation.isPending}
             >

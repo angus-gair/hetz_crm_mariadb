@@ -39,13 +39,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // CRM Contact Form Proxy
   apiRouter.post('/crm/contacts', async (req, res) => {
+    console.log('=== CRM Contact Form Submission ===');
+    console.log('Request payload:', req.body);
+
     try {
+      console.log('Making request to SuiteCRM API...');
       const response = await axios.post(`${SUITECRM_API_URL}/contacts`, req.body, {
         headers: {
           'Authorization': `Bearer ${API_TOKEN}`,
           'Content-Type': 'application/json'
         }
       });
+
+      console.log('SuiteCRM API Response:', {
+        status: response.status,
+        data: response.data
+      });
+
+      console.log('Tables affected:');
+      console.log('- contacts: New contact record created');
+      console.log('- email_addr_bean_rel: Email relationship record created');
+      console.log('- email_addresses: Email address record created');
+      console.log('- prospect_lists_prospects: If marketing consent given, added to marketing list');
 
       res.status(response.status).json(response.data);
     } catch (error) {
@@ -54,8 +69,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (axios.isAxiosError(error)) {
         const status = error.response?.status || 500;
         const message = error.response?.data?.message || 'An error occurred while processing your request';
+        console.error('Error details:', {
+          status,
+          message,
+          response: error.response?.data
+        });
         res.status(status).json({ message });
       } else {
+        console.error('Unexpected error:', error);
         res.status(500).json({ message: 'Internal server error' });
       }
     }
