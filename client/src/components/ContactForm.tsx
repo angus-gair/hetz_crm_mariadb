@@ -55,8 +55,8 @@ export default function ContactForm() {
       console.log('Form data being submitted:', data);
 
       try {
-        console.log('Making request to backend proxy endpoint...');
-        const response = await fetch('/api/contacts', {
+        console.log('Making request to custom API endpoint...');
+        const response = await fetch('/custom-api/api-proxy.php/contacts', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
