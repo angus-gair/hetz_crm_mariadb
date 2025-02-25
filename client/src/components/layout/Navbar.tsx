@@ -12,6 +12,7 @@ export function Navbar() {
     { name: "Home", href: "#home" },
     { name: "Portfolio", href: "#portfolio" },
     { name: "About Us", href: "#about" },
+    { name: "Contact Form", href: "#form" },
     { name: "Book a Consultation", href: "#consultation" },
   ];
 
