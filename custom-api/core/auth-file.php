@@ -2,6 +2,7 @@
 /**
  * Authentication Handler
  * *
+ * 
  * Handles OAuth2 token authentication for API requests
  */
 
