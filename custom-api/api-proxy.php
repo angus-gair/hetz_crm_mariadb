@@ -34,10 +34,14 @@ require_once(__DIR__ . '/core/database-file.php');
 require_once(__DIR__ . '/core/auth-file.php');
 require_once(__DIR__ . '/core/response-file.php');
 require_once(__DIR__ . '/utils/validation-utility.php');
+require_once(__DIR__ . '/utils/security-utility.php');
 
 try {
     // Initialize database connection
     $db = Database::getInstance($config);
+
+    // Initialize security utility
+    $security = new Security($db, $config);
 
     // Parse request path
     $request_uri = $_SERVER['REQUEST_URI'];
@@ -63,6 +67,27 @@ try {
     // Log request details for debugging
     error_log("API Request - Module: $module, Action: $action, ID: $id");
     error_log("Request Body: " . file_get_contents('php://input'));
+
+    // Apply security checks for contacts endpoint
+    if ($module === 'contacts' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Get client IP
+        $clientIp = $security->getClientIp();
+
+        // Check rate limit (5 submissions per hour)
+        if (!$security->checkRateLimit($clientIp, 'contact_submission', 5, 3600)) {
+            Response::error("Too many submissions. Please try again later.", 429);
+            exit;
+        }
+
+        // Get request body
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        // Check for spam
+        if ($security->isSpam($data)) {
+            Response::error("Your submission has been flagged as potential spam.", 400);
+            exit;
+        }
+    }
 
     // Route to appropriate module handler with correct file paths
     switch ($module) {
@@ -144,6 +169,11 @@ try {
     $code = $e->getCode() ?: 500;
     Response::error($e->getMessage(), $code);
 } finally {
+    // Clean up old rate limit records periodically (7 days)
+    if (rand(1, 100) === 1) { // 1% chance to run cleanup
+        $security->cleanupRateLimits(7);
+    }
+
     // Close database connection if it exists
     if (isset($db)) {
         $db->close();

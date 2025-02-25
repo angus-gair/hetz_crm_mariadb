@@ -33,5 +33,12 @@ return [
         'token_expiry_check' => true,
         'rate_limit' => 100,  // Requests per minute
         'validate_inputs' => true,
+        'spam_protection' => [
+            'enabled' => true,
+            'max_urls' => 3,  // Maximum number of URLs allowed in description
+            'keywords' => ['viagra', 'casino', 'pharmacy', 'diet', 'weight loss', 'sex', 'porn'],
+            'check_caps_ratio' => true,  // Check for excessive capitalization
+            'max_caps_ratio' => 0.3,  // Maximum ratio of uppercase letters
+        ],
     ]
 ];
