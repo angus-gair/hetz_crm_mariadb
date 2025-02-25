@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
 import consultationRoutes from "./routes/consultation";
+import contactRoutes from "./routes/contact";
 import { initDatabase } from "./database";
 import "./syncWorker"; // Import syncWorker to start the sync process
 
@@ -11,8 +12,9 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Register consultation routes
+// Register API routes
 app.use('/api', consultationRoutes);
+app.use('/api', contactRoutes);
 
 // Serve static files from the public directory
 app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
