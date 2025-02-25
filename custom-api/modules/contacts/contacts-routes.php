@@ -5,140 +5,126 @@
  * Handles all contact-related API requests
  */
 
-require_once(__DIR__ . '/create.php');
-require_once(__DIR__ . '/search.php');
+require_once(__DIR__ . '/contact-create.php');
+require_once(__DIR__ . '/contact-search.php');
 
 class ContactsRoutes {
     private $db;
     private $config;
-    
-    /**
-     * Constructor
-     */
+
     public function __construct($db, $config) {
         $this->db = $db;
         $this->config = $config;
     }
-    
-    /**
-     * List contacts
-     */
-    public function list() {
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
-        $offset = ($page - 1) * $limit;
-        
-        // Security check for limits
-        if ($limit > 100) {
-            $limit = 100;
-        }
-        
-        // Build query
-        $query = "SELECT id, first_name, last_name, email1, phone_mobile, date_entered, date_modified 
-                 FROM contacts 
-                 WHERE deleted = 0 
-                 ORDER BY date_modified DESC 
-                 LIMIT ? OFFSET ?";
-        
-        // Execute query
-        $result = $this->db->executeQuery($query, "ii", [$limit, $offset]);
-        $contacts = $this->db->fetchAll($result);
-        
-        // Get total count
-        $count_query = "SELECT COUNT(*) as total FROM contacts WHERE deleted = 0";
-        $count_result = $this->db->executeQuery($count_query);
-        $count_data = $this->db->fetchOne($count_result);
-        
-        // Return response
-        Response::success([
-            'contacts' => $contacts,
-            'pagination' => [
-                'total' => (int)$count_data['total'],
-                'page' => $page,
-                'limit' => $limit,
-                'pages' => ceil($count_data['total'] / $limit)
-            ]
-        ]);
-    }
-    
-    /**
-     * Get a single contact
-     */
-    public function get($id) {
-        // Validate ID
-        if (empty($id) || !is_string($id)) {
-            Response::error("Invalid contact ID", 400);
-        }
-        
-        // Query for contact
-        $query = "SELECT c.*, e.email_address 
-                 FROM contacts c
-                 LEFT JOIN email_addr_bean_rel rel ON rel.bean_id = c.id AND rel.deleted = 0
-                 LEFT JOIN email_addresses e ON e.id = rel.email_address_id AND e.deleted = 0
-                 WHERE c.id = ? AND c.deleted = 0";
-        
-        $result = $this->db->executeQuery($query, "s", [$id]);
-        
-        if ($result->num_rows === 0) {
-            Response::error("Contact not found", 404);
-        }
-        
-        $contact = $this->db->fetchOne($result);
-        
-        // Get related data if requested
-        if (isset($_GET['include'])) {
-            $includes = explode(',', $_GET['include']);
-            
-            if (in_array('accounts', $includes)) {
-                // Get related accounts
-                $this->loadSuiteCRM();
-                
-                $contactBean = BeanFactory::getBean('Contacts', $id);
-                if ($contactBean) {
-                    $accountData = [];
-                    $contactBean->load_relationship('accounts');
-                    $relatedAccounts = $contactBean->accounts->getBeans();
-                    
-                    foreach ($relatedAccounts as $account) {
-                        $accountData[] = [
-                            'id' => $account->id,
-                            'name' => $account->name,
-                            'industry' => $account->industry,
-                            'phone_office' => $account->phone_office
-                        ];
-                    }
-                    
-                    $contact['accounts'] = $accountData;
-                }
+
+    public function create($data) {
+        // Log the incoming request
+        error_log("Creating new contact with data: " . json_encode($data));
+
+        // Validate required fields
+        $required_fields = ['first_name', 'last_name', 'email'];
+        foreach ($required_fields as $field) {
+            if (!isset($data[$field]) || empty($data[$field])) {
+                Response::error("Missing required field: $field", 400);
+                return;
             }
         }
-        
-        Response::success(['contact' => $contact]);
+
+        try {
+            // Create contact record
+            $sql = "INSERT INTO contacts (
+                first_name, 
+                last_name, 
+                email, 
+                phone_mobile,
+                description,
+                lead_source,
+                date_entered
+            ) VALUES (?, ?, ?, ?, ?, ?, NOW())";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("ssssss",
+                $data['first_name'],
+                $data['last_name'],
+                $data['email'],
+                $data['phone_mobile'] ?? '',
+                $data['description'] ?? '',
+                $data['lead_source'] ?? 'Website'
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Failed to create contact: " . $stmt->error);
+            }
+
+            $contact_id = $stmt->insert_id;
+
+            // Log the successful creation
+            error_log("Contact created successfully with ID: " . $contact_id);
+
+            // Prepare return data
+            $returnData = [
+                'id' => $contact_id,
+                'name' => $data['first_name'] . ' ' . $data['last_name'],
+                'email' => $data['email'],
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+
+            Response::success([
+                'contact' => $returnData,
+                'message' => 'Contact created successfully'
+            ]);
+
+        } catch (Exception $e) {
+            error_log("Contact creation error: " . $e->getMessage());
+            Response::error("Failed to create contact", 500);
+        }
     }
-    
-    /**
-     * Create a new contact
-     */
-    public function create($data) {
-        $contact = new ContactCreate($this->db, $this->config);
-        $result = $contact->execute($data);
-        
-        Response::success(['contact' => $result], 201, 'Contact created successfully');
+
+    public function list() {
+        try {
+            $sql = "SELECT * FROM contacts WHERE deleted = 0 ORDER BY date_entered DESC";
+            $result = $this->db->query($sql);
+
+            $contacts = [];
+            while ($row = $result->fetch_assoc()) {
+                $contacts[] = $row;
+            }
+
+            Response::success(['contacts' => $contacts]);
+        } catch (Exception $e) {
+            error_log("Failed to fetch contacts: " . $e->getMessage());
+            Response::error("Failed to fetch contacts", 500);
+        }
     }
-    
-    /**
-     * Search for contacts
-     */
+
+    public function get($id) {
+        try {
+            $sql = "SELECT * FROM contacts WHERE id = ? AND deleted = 0";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("s", $id);
+            $stmt->execute();
+
+            $result = $stmt->get_result();
+            $contact = $result->fetch_assoc();
+
+            if (!$contact) {
+                Response::error("Contact not found", 404);
+                return;
+            }
+
+            Response::success(['contact' => $contact]);
+        } catch (Exception $e) {
+            error_log("Failed to fetch contact: " . $e->getMessage());
+            Response::error("Failed to fetch contact", 500);
+        }
+    }
+
     public function search() {
         $search = new ContactSearch($this->db, $this->config);
         $results = $search->execute($_GET);
-        
         Response::success($results);
     }
     
-    /**
-     * Update a contact
-     */
     public function update($id, $data) {
         // Validate ID
         if (empty($id) || !is_string($id)) {
@@ -195,9 +181,6 @@ class ContactsRoutes {
         Response::success(['id' => $contactBean->id], 200, 'Contact updated successfully');
     }
     
-    /**
-     * Delete a contact
-     */
     public function delete($id) {
         // Validate ID
         if (empty($id) || !is_string($id)) {
@@ -220,6 +203,7 @@ class ContactsRoutes {
         Response::success(null, 200, 'Contact deleted successfully');
     }
     
+
     /**
      * Load the SuiteCRM framework
      */
@@ -241,3 +225,4 @@ class ContactsRoutes {
         // Restore directory
         chdir($currentDir);
     }
+}

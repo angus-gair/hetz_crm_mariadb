@@ -9,7 +9,7 @@ import { initDatabase } from "./database";
 import axios from "axios";
 import { db } from "@db";
 
-// Get API configuration from environment or config
+// Get API configuration from environment
 const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:3000/custom-api";
 const API_TOKEN = process.env.API_TOKEN || "your_default_token";
 
@@ -38,12 +38,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.use((req, res, next) => {
     const timestamp = new Date().toISOString();
     console.log(`${timestamp} [express] ${req.method} ${req.path} - Request started`);
+    console.log('Request headers:', req.headers);
+    console.log('Request body:', req.body);
 
     // Log response
     const originalSend = res.send;
     res.send = function(...args) {
       const responseTimestamp = new Date().toISOString();
       console.log(`${responseTimestamp} [express] ${req.method} ${req.path} ${res.statusCode} - Request completed`);
+      console.log('Response body:', args[0]);
       return originalSend.apply(res, args);
     };
 
@@ -70,6 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      console.log('Making request to API endpoint:', `${API_BASE_URL}/api-proxy.php/contacts`);
       const response = await axios.post(`${API_BASE_URL}/api-proxy.php/contacts`, req.body, {
         headers: {
           'Authorization': `Bearer ${API_TOKEN}`,
@@ -88,6 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('API Error:', error);
 
       if (axios.isAxiosError(error)) {
+        console.error('Full error response:', error.response?.data);
         const status = error.response?.status || 500;
         const message = error.response?.data?.message || 'An error occurred while processing your request';
         console.error('Error details:', {

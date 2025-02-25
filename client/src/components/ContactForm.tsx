@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 
+// Align schema with API expectations
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -25,7 +26,8 @@ const formSchema = z.object({
   phone: z.string()
     .min(8, "Phone number must be at least 8 digits")
     .max(15, "Phone number must not exceed 15 digits")
-    .regex(/^[0-9+\s-()]*$/, "Please enter a valid phone number"),
+    .regex(/^[0-9+\s-()]*$/, "Please enter a valid phone number")
+    .optional(),
   notes: z.string().max(500, "Notes must not exceed 500 characters").optional(),
   marketingConsent: z.boolean().default(false),
   leadSource: z.string().default("Website")
@@ -51,7 +53,7 @@ export default function ContactForm() {
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      console.log('=== Contact Form Frontend Submission ===');
+      console.log('=== Contact Form Submission ===');
       console.log('Form data being submitted:', data);
 
       try {
@@ -73,7 +75,7 @@ export default function ContactForm() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+          const errorData = await response.json();
           console.error('Form submission failed:', errorData);
           throw new Error(errorData.message || 'Failed to submit form');
         }
@@ -86,7 +88,7 @@ export default function ContactForm() {
         if (error instanceof Error) {
           throw error;
         }
-        throw new Error('An error occurred while processing your request');
+        throw new Error('An unexpected error occurred');
       }
     },
     onSuccess: (data) => {
@@ -97,11 +99,11 @@ export default function ContactForm() {
       })
       form.reset()
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Mutation failed:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to submit form. Please try again.",
+        description: error.message || "Failed to submit form. Please try again.",
         variant: "destructive",
       })
     },

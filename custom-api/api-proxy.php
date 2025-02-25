@@ -1,6 +1,6 @@
 <?php
 /**
- * SuiteCRM API Proxy
+ * Custom API Proxy
  * 
  * Main entry point for the modular API proxy
  */
@@ -29,11 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Load core components
-require_once(__DIR__ . '/core/database.php');
-require_once(__DIR__ . '/core/auth.php');
-require_once(__DIR__ . '/core/response.php');
-require_once(__DIR__ . '/utils/validation.php');
+// Load core components with proper file names
+require_once(__DIR__ . '/core/database-file.php');
+require_once(__DIR__ . '/core/auth-file.php');
+require_once(__DIR__ . '/core/response-file.php');
+require_once(__DIR__ . '/utils/validation-utility.php');
 
 try {
     // Initialize database connection
@@ -60,35 +60,29 @@ try {
     $action = isset($path_segments[1]) ? $path_segments[1] : '';
     $id = isset($path_segments[2]) ? $path_segments[2] : '';
 
-    // Authenticate the request (except for public endpoints)
-    $public_endpoints = [
-        'contacts' => true  // Make contacts endpoint public for form submissions
-    ];
+    // Log request details for debugging
+    error_log("API Request - Module: $module, Action: $action, ID: $id");
+    error_log("Request Body: " . file_get_contents('php://input'));
 
-    if (!isset($public_endpoints[$module])) {
-        $auth = new Auth($db, $config);
-        $token_data = $auth->authenticate();
-    }
-
-    // Route to appropriate module handler
+    // Route to appropriate module handler with correct file paths
     switch ($module) {
         case 'contacts':
-            require_once(__DIR__ . '/modules/contacts/routes.php');
+            require_once(__DIR__ . '/modules/contacts/contacts-routes.php');
             $handler = new ContactsRoutes($db, $config);
             break;
 
         case 'meetings':
-            require_once(__DIR__ . '/modules/meetings/routes.php');
+            require_once(__DIR__ . '/modules/meetings/meetings-routes.php');
             $handler = new MeetingsRoutes($db, $config);
             break;
 
         case 'accounts':
-            require_once(__DIR__ . '/modules/accounts/routes.php');
+            require_once(__DIR__ . '/modules/accounts/accounts-routes.php');
             $handler = new AccountsRoutes($db, $config);
             break;
 
         case 'graphql':
-            require_once(__DIR__ . '/modules/graphql/handler.php');
+            require_once(__DIR__ . '/modules/graphql/graphql-handler.php');
             $handler = new GraphQLHandler($db, $config);
             break;
 
@@ -103,7 +97,7 @@ try {
             } else {
                 Response::error("Unknown module: $module", 404);
             }
-            break;
+            exit;
     }
 
     // Handle the request based on HTTP method and action
