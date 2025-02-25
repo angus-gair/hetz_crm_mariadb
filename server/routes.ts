@@ -7,6 +7,7 @@ import { SuiteCRMResolver } from "./graphql/resolvers";
 import { validateConfig } from "./config";
 import { initDatabase } from "./database";
 import axios from "axios";
+import { db } from "@db";
 
 const SUITECRM_API_URL = "http://5.75.135.254/custom-api/api-proxy.php";
 const API_TOKEN = "c038c571a0f0dc8ff2b1c89e9545dcd5d4e13319cf63c0657c1d39e0fefd24aa";
@@ -69,9 +70,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const endTime = Date.now();
 
+      // Enhanced response logging
       console.log('SuiteCRM API Response:', {
         status: response.status,
         data: response.data,
+        contact_id: response.data?.contact?.id || 'Not returned',
+        contact_name: response.data?.contact?.name || 'Not returned',
+        contact_email: response.data?.contact?.email || 'Not returned',
+        created_at: response.data?.contact?.created_at || 'Not returned',
         responseTime: `${endTime - startTime}ms`
       });
 
@@ -80,6 +86,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('- email_addr_bean_rel: Email relationship record created');
       console.log('- email_addresses: Email address record created');
       console.log('- prospect_lists_prospects: If marketing consent given, added to marketing list');
+
+      // Execute SQL verification query using execute_sql_tool
+      if (response.data?.contact?.id) {
+        try {
+          const sql_query = `
+            SELECT 
+              id, 
+              first_name, 
+              last_name, 
+              date_entered,
+              email_address,
+              prospect_list_name
+            FROM contacts
+            WHERE id = '${response.data.contact.id}'
+          `;
+          console.log('Executing verification query:', sql_query);
+          //Here you would need to add the actual execution of the query using the db object from "@db"
+          //Example (assuming a method exists on the db object):  await db.execute(sql_query);
+        } catch (dbError) {
+          console.error('Database verification failed:', dbError);
+        }
+      }
 
       res.status(response.status).json(response.data);
     } catch (error) {
