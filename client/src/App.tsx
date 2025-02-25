@@ -7,20 +7,12 @@ import { Footer } from "@/components/layout/Footer";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AdminPage from "@/pages/admin";
-import ContactForm from "@/components/ContactForm";
-
-// Hash router configuration for wouter
-const hashRoutePrefix = () => window.location.hash.replace("#", "") || "/";
-const hashNavigate = (to: string) => (window.location.hash = to);
 
 function Router() {
   return (
     <Switch>
       {/* Main homepage route */}
       <Route path="/" component={HomePage} />
-
-      {/* Contact form route */}
-      <Route path="/form" component={ContactForm} />
 
       {/* Admin page */}
       <Route path="/admin" component={AdminPage} />

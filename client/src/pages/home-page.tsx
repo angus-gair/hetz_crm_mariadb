@@ -5,6 +5,7 @@ import { Testimonials } from "@/components/sections/Testimonials";
 import { TeamSection } from "@/components/sections/TeamSection";
 import { ConsultationScheduler } from "@/components/sections/ConsultationScheduler";
 import { ConnectWithUs } from "@/components/sections/ConnectWithUs";
+import ContactForm from "@/components/ContactForm";
 
 export default function HomePage() {
   return (
@@ -28,6 +29,9 @@ export default function HomePage() {
             <TeamSection />
           </div>
         </section>
+
+        {/* Contact Form section */}
+        <ContactForm />
 
         {/* Consultation section */}
         <section id="consultation" className="py-20 bg-background">
