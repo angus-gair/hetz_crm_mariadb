@@ -18,16 +18,24 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 
+// Schema matching SuiteCRM contact fields
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
-  phone: z.string().optional(),
-  notes: z.string().optional(),
+  phone: z.string()
+    .min(8, "Phone number must be at least 8 digits")
+    .max(15, "Phone number must not exceed 15 digits")
+    .regex(/^[0-9+\s-()]*$/, "Please enter a valid phone number"),
+  notes: z.string().max(500, "Notes must not exceed 500 characters").optional(),
   marketingConsent: z.boolean().default(false),
+  leadSource: z.string().default("Website")
 })
 
 type FormValues = z.infer<typeof formSchema>
+
+const SUITECRM_API_URL = "http://5.75.135.254/custom-api/api-proxy.php"
+const API_TOKEN = "c038c571a0f0dc8ff2b1c89e9545dcd5d4e13319cf63c0657c1d39e0fefd24aa"
 
 export default function ContactForm() {
   const { toast } = useToast()
@@ -41,21 +49,32 @@ export default function ContactForm() {
       phone: "",
       notes: "",
       marketingConsent: false,
+      leadSource: "Website"
     },
   })
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const response = await fetch('/api/contact', {
+      const response = await fetch(`${SUITECRM_API_URL}/contacts`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_TOKEN}`,
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          first_name: data.firstName,
+          last_name: data.lastName,
+          email: data.email,
+          phone_mobile: data.phone,
+          description: data.notes,
+          marketing_consent: data.marketingConsent,
+          lead_source: data.leadSource
+        })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to submit form')
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to submit form')
       }
 
       return response.json()
@@ -63,14 +82,14 @@ export default function ContactForm() {
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Form submitted successfully!",
+        description: "Thank you for contacting us. We'll be in touch soon!",
       })
       form.reset()
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to submit form. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to submit form. Please try again.",
         variant: "destructive",
       })
     },
@@ -94,7 +113,10 @@ export default function ContactForm() {
                 <FormItem>
                   <FormLabel>First Name</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} className={`${
+                      form.formState.errors.firstName ? 'border-red-500' : 
+                      field.value ? 'border-green-500' : ''
+                    }`} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -108,7 +130,10 @@ export default function ContactForm() {
                 <FormItem>
                   <FormLabel>Last Name</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} className={`${
+                      form.formState.errors.lastName ? 'border-red-500' : 
+                      field.value ? 'border-green-500' : ''
+                    }`} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -122,7 +147,10 @@ export default function ContactForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" {...field} />
+                    <Input type="email" {...field} className={`${
+                      form.formState.errors.email ? 'border-red-500' : 
+                      field.value ? 'border-green-500' : ''
+                    }`} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -136,7 +164,10 @@ export default function ContactForm() {
                 <FormItem>
                   <FormLabel>Phone Number</FormLabel>
                   <FormControl>
-                    <Input type="tel" {...field} />
+                    <Input type="tel" {...field} className={`${
+                      form.formState.errors.phone ? 'border-red-500' : 
+                      field.value ? 'border-green-500' : ''
+                    }`} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -148,9 +179,12 @@ export default function ContactForm() {
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Additional Notes</FormLabel>
+                  <FormLabel>Message</FormLabel>
                   <FormControl>
-                    <Textarea {...field} />
+                    <Textarea {...field} className={`${
+                      form.formState.errors.notes ? 'border-red-500' : 
+                      field.value ? 'border-green-500' : ''
+                    }`} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
