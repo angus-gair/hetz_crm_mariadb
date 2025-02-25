@@ -32,6 +32,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API Routes
   const apiRouter = express.Router();
 
+  // Request logging middleware
+  apiRouter.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(`${timestamp} [express] ${req.method} ${req.path} - Request started`);
+
+    // Log response
+    const originalSend = res.send;
+    res.send = function(...args) {
+      const responseTimestamp = new Date().toISOString();
+      console.log(`${responseTimestamp} [express] ${req.method} ${req.path} ${res.statusCode} - Request completed`);
+      return originalSend.apply(res, args);
+    };
+
+    next();
+  });
+
   // Health check endpoint
   apiRouter.get('/health', (req, res) => {
     res.json({ status: 'ok' });
