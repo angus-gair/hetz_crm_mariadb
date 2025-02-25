@@ -55,9 +55,11 @@ export default function ContactForm() {
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      console.log('Submitting contact form with data:', data);
+      console.log('=== Contact Form Frontend Submission ===');
+      console.log('Form data being submitted:', data);
 
       try {
+        console.log('Making request to backend proxy endpoint...');
         const response = await fetch('/api/crm/contacts', {
           method: 'POST',
           headers: {
@@ -115,7 +117,7 @@ export default function ContactForm() {
   }
 
   return (
-    <section id="form" className="py-20 bg-gray-50">
+    <section className="py-20 bg-gray-50">
       <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md space-y-6">
         <h2 className="text-2xl font-bold text-center">Contact Us</h2>
 
