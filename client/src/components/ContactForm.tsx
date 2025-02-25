@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 
-// Schema matching SuiteCRM contact fields
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -33,9 +32,6 @@ const formSchema = z.object({
 })
 
 type FormValues = z.infer<typeof formSchema>
-
-// Use environment variables or configuration for these values
-const API_TOKEN = "c038c571a0f0dc8ff2b1c89e9545dcd5d4e13319cf63c0657c1d39e0fefd24aa"
 
 export default function ContactForm() {
   const { toast } = useToast()
@@ -60,11 +56,10 @@ export default function ContactForm() {
 
       try {
         console.log('Making request to backend proxy endpoint...');
-        const response = await fetch('/api/crm/contacts', {
+        const response = await fetch('/api/contacts', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'X-CRM-Token': API_TOKEN
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             first_name: data.firstName,
