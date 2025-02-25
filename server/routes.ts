@@ -60,16 +60,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       console.log('Making request to SuiteCRM API...');
+      const startTime = Date.now();
       const response = await axios.post(`${SUITECRM_API_URL}/contacts`, req.body, {
         headers: {
           'Authorization': `Bearer ${API_TOKEN}`,
           'Content-Type': 'application/json'
         }
       });
+      const endTime = Date.now();
 
       console.log('SuiteCRM API Response:', {
         status: response.status,
-        data: response.data
+        data: response.data,
+        responseTime: `${endTime - startTime}ms`
       });
 
       console.log('Tables affected:');
@@ -88,7 +91,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Error details:', {
           status,
           message,
-          response: error.response?.data
+          response: error.response?.data,
+          requestBody: req.body,
+          requestHeaders: error.config?.headers,
+          responseHeaders: error.response?.headers
         });
         res.status(status).json({ message });
       } else {
