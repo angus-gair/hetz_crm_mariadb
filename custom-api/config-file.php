@@ -8,26 +8,26 @@
 return [
     // Database configuration
     'db' => [
-        'host' => 'mariadb',
-        'user' => 'suitecrm',
-        'pass' => 'Jamfinnarc1776!',
-        'name' => 'suitecrm'
+        'host' => 'localhost',
+        'user' => 'neondb_owner',
+        'pass' => 'npg_tUOHfoV7Zeu1',
+        'name' => 'neondb'
     ],
-    
+
     // SuiteCRM configuration
     'suitecrm' => [
         'path' => dirname(__FILE__) . '/../',  // Adjust to your SuiteCRM root path
         'entry_point' => 'include/entryPoint.php',
     ],
-    
+
     // API configuration
     'api' => [
         'version' => '1.0',
-        'allow_origin' => '*',  // For production, specify exact domains
-        'debug' => false,
-        'log_path' => dirname(__FILE__) . '/logs/',
+        'allow_origin' => '*',  // For development, in production specify exact domains
+        'debug' => true,  // Enable debug mode to see detailed errors
+        'log_path' => __DIR__ . '/logs/',
     ],
-    
+
     // Security configuration
     'security' => [
         'token_expiry_check' => true,
