@@ -1,44 +1,40 @@
-import { siteConfig } from "@/config";
 import { Button } from "@/components/ui/button";
 
 export function Hero() {
-  const { title, subtitle } = siteConfig.hero;
-
   return (
-    <section id="home" className="w-full py-8 md:py-16 lg:py-24 bg-background">
-      <div className="container px-4 md:px-6">
-        <div className="flex flex-col items-center space-y-8 text-center">
-          <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
-            {title}
+    <section className="relative h-[90vh] flex items-center justify-center bg-background">
+      <div className="container mx-auto px-4">
+        <div className="max-w-4xl mx-auto text-center mb-16">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80">
+            Premium Custom Cubby Houses
           </h1>
-          <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-            {subtitle}
+          <p className="text-xl text-muted-foreground mb-8">
+            Create magical spaces for children to learn, play, and grow with our expertly crafted custom cubby houses.
           </p>
-          <div className="flex flex-col gap-4 min-w-[200px] sm:flex-row sm:gap-6">
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full sm:w-auto"
-              asChild
-            >
-              <a href="#portfolio">View Portfolio</a>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button asChild size="lg" variant="default" className="px-8">
+              <a href="#consultation">Start Your Design</a>
             </Button>
-            <Button
-              size="lg"
-              className="w-full sm:w-auto"
-              asChild
-            >
-              <a href="#consultation">Get a Quote</a>
+            <Button asChild size="lg" variant="outline" className="px-8">
+              <a href="#portfolio">View Gallery</a>
             </Button>
           </div>
         </div>
 
-        <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2">
-          <div className="relative aspect-video rounded-lg flex items-center justify-center border-4 border-gray-300 bg-gray-200">
-            <span className="text-gray-700 text-xl font-medium">Hero Image 1</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-xl">
+            <img 
+              src="https://picsum.photos/800/600?random=7" 
+              alt="Premium Cubby House Design"
+              className="object-cover w-full h-full transform hover:scale-105 transition-transform duration-300"
+            />
           </div>
-          <div className="relative aspect-video rounded-lg flex items-center justify-center border-4 border-gray-300 bg-gray-200">
-            <span className="text-gray-700 text-xl font-medium">Hero Image 2</span>
+          <div className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-xl">
+            <img 
+              src="https://picsum.photos/800/600?random=8" 
+              alt="Luxury Play Space"
+              className="object-cover w-full h-full transform hover:scale-105 transition-transform duration-300"
+            />
           </div>
         </div>
       </div>

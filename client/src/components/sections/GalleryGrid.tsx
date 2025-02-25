@@ -1,64 +1,104 @@
-import { type FC, useState } from "react";
-import { sections } from "@/config";
-import { Card } from "@/components/ui/card";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
-type StyleFilter = "all" | "style1" | "style2" | "style3" | "style4";
+type GalleryItem = {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  category: string;
+};
 
-export const GalleryGrid: FC = () => {
-  const { title, description, items } = sections.gallery;
-  const [activeFilter, setActiveFilter] = useState<StyleFilter>("all");
+const galleryItems: GalleryItem[] = [
+  {
+    id: "1",
+    title: "Enchanted Castle",
+    description: "A magical castle-themed cubby house with climbing features",
+    image: "https://picsum.photos/800/600?random=1",
+    category: "Castle"
+  },
+  {
+    id: "2",
+    title: "Forest Retreat",
+    description: "Natural wood finish with integrated outdoor play area",
+    image: "https://picsum.photos/800/600?random=2",
+    category: "Modern"
+  },
+  {
+    id: "3",
+    title: "Seaside Haven",
+    description: "Beach-inspired design with weatherproof features",
+    image: "https://picsum.photos/800/600?random=3",
+    category: "Cottage"
+  },
+  {
+    id: "4",
+    title: "Woodland Lodge",
+    description: "Rustic design with natural elements",
+    image: "https://picsum.photos/800/600?random=4",
+    category: "Modern"
+  },
+  {
+    id: "5",
+    title: "Princess Palace",
+    description: "Elegant design with royal touches",
+    image: "https://picsum.photos/800/600?random=5",
+    category: "Castle"
+  },
+  {
+    id: "6",
+    title: "Coastal Retreat",
+    description: "Beachside inspired playhouse",
+    image: "https://picsum.photos/800/600?random=6",
+    category: "Cottage"
+  }
+];
 
-  const filters: { id: StyleFilter; label: string }[] = [
-    { id: "all", label: "All" },
-    { id: "style1", label: "Style 1" },
-    { id: "style2", label: "Style 2" },
-    { id: "style3", label: "Style 3" },
-    { id: "style4", label: "Style 4" },
-  ];
+const categories = ["All", "Castle", "Modern", "Cottage"];
 
-  const filteredItems = items.filter(item => 
-    activeFilter === "all" || item.style === activeFilter
-  );
+export function GalleryGrid() {
+  const [activeCategory, setActiveCategory] = useState("All");
+
+  const filteredItems = activeCategory === "All" 
+    ? galleryItems 
+    : galleryItems.filter(item => item.category === activeCategory);
 
   return (
-    <section id="portfolio" className="w-full py-12 md:py-24 lg:py-32">
-      <div className="container px-4 md:px-6">
-        <div className="flex flex-col items-center justify-center space-y-4 text-center">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
-            {title}
-          </h2>
-          <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-            {description}
+    <section className="py-20 bg-secondary/10">
+      <div className="container px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold mb-4">Our Gallery</h2>
+          <p className="text-lg text-muted-foreground mb-8">
+            Explore our collection of custom-designed cubby houses
           </p>
-          <div className="flex flex-wrap justify-center gap-2 mt-8">
-            {filters.map((filter) => (
+          <div className="flex flex-wrap justify-center gap-2">
+            {categories.map((category) => (
               <Button
-                key={filter.id}
-                variant={activeFilter === filter.id ? "default" : "outline"}
-                onClick={() => setActiveFilter(filter.id)}
+                key={category}
+                variant={activeCategory === category ? "default" : "outline"}
+                onClick={() => setActiveCategory(category)}
                 className="min-w-[100px]"
               >
-                {filter.label}
+                {category}
               </Button>
             ))}
           </div>
         </div>
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
-          {filteredItems.map((item, index) => (
-            <Card key={index} className="overflow-hidden">
-              {item.image && (
-                <div className="aspect-video w-full">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="object-cover w-full h-full"
-                  />
-                </div>
-              )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredItems.map((item) => (
+            <Card key={item.id} className="overflow-hidden group">
+              <div className="aspect-[4/3] overflow-hidden">
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+                />
+              </div>
               <div className="p-4">
-                <h3 className="text-lg font-bold">{item.title}</h3>
-                <p className="text-sm text-gray-500 mt-2">{item.description}</p>
+                <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
+                <p className="text-muted-foreground">{item.description}</p>
               </div>
             </Card>
           ))}
