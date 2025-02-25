@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { useMutation } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
+
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -17,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 
+// Define form schema using zod
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -28,7 +30,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
-const ContactForm = () => {
+export default function ContactForm() {
   const { toast } = useToast()
 
   const form = useForm<FormValues>({
@@ -45,32 +47,31 @@ const ContactForm = () => {
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const response = await fetch('http://5.75.135.254/custom-api/api-proxy.php/create-contact', {
+      const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUITE_CRM_TOKEN}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
       })
-      
+
       if (!response.ok) {
-        throw new Error('Failed to create contact')
+        throw new Error('Failed to submit form')
       }
-      
+
       return response.json()
     },
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Contact information submitted successfully!",
+        description: "Form submitted successfully!",
       })
       form.reset()
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to submit contact information. Please try again.",
+        description: "Failed to submit form. Please try again.",
         variant: "destructive",
       })
     },
@@ -83,7 +84,7 @@ const ContactForm = () => {
   return (
     <div className="max-w-md mx-auto p-6 space-y-6">
       <h2 className="text-2xl font-bold text-center">Contact Us</h2>
-      
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -188,5 +189,3 @@ const ContactForm = () => {
     </div>
   )
 }
-
-export default ContactForm
