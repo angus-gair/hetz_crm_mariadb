@@ -59,6 +59,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('=== CRM Contact Form Submission ===');
     console.log('Request payload:', req.body);
 
+    // Validate Content-Type
+    const contentType = req.get('Content-Type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('Invalid Content-Type:', contentType);
+      return res.status(415).json({ 
+        message: 'Content-Type must be application/json' 
+      });
+    }
+
     try {
       console.log('Making request to SuiteCRM API...');
       const startTime = Date.now();
@@ -102,8 +111,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             WHERE id = '${response.data.contact.id}'
           `;
           console.log('Executing verification query:', sql_query);
-          //Here you would need to add the actual execution of the query using the db object from "@db"
-          //Example (assuming a method exists on the db object):  await db.execute(sql_query);
+          // Here you would need to add the actual execution of the query using the db object from "@db"
+          // Example (assuming a method exists on the db object):  await db.execute(sql_query);
         } catch (dbError) {
           console.error('Database verification failed:', dbError);
         }
