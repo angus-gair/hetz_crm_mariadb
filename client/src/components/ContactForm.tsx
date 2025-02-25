@@ -55,8 +55,8 @@ export default function ContactForm() {
       console.log('Form data being submitted:', data);
 
       try {
-        console.log('Making request to custom API endpoint...');
-        const response = await fetch('/custom-api/api-proxy.php/contacts', {
+        console.log('Making request to API endpoint...');
+        const response = await fetch('/api/contacts', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -70,23 +70,23 @@ export default function ContactForm() {
             marketing_consent: data.marketingConsent,
             lead_source: data.leadSource
           })
-        })
+        });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
+          const errorData = await response.json().catch(() => ({}));
           console.error('Form submission failed:', errorData);
-          throw new Error(errorData.message || 'Failed to submit form')
+          throw new Error(errorData.message || 'Failed to submit form');
         }
 
-        const result = await response.json()
+        const result = await response.json();
         console.log('Form submission successful:', result);
-        return result
+        return result;
       } catch (error) {
         console.error('Form submission error:', error);
         if (error instanceof Error) {
-          throw error
+          throw error;
         }
-        throw new Error('Network error occurred. Please try again.')
+        throw new Error('An error occurred while processing your request');
       }
     },
     onSuccess: (data) => {

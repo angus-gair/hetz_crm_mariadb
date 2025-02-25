@@ -70,7 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/contacts`, req.body, {
+      const response = await axios.post(`${API_BASE_URL}/api-proxy.php/contacts`, req.body, {
         headers: {
           'Authorization': `Bearer ${API_TOKEN}`,
           'Content-Type': 'application/json'
