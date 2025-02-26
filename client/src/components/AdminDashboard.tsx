@@ -12,6 +12,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -98,8 +99,13 @@ export default function AdminDashboard() {
         setLogs(prev => [
           ...prev,
           `[${new Date().toISOString()}] Response ${response.status} (${duration.toFixed(2)}ms)`,
-          `Response data: ${JSON.stringify(responseData, null, 2)}`
+          `Response data: ${JSON.stringify(responseData, null, 2)}`,
+          `Response headers: ${JSON.stringify(Object.fromEntries(response.headers), null, 2)}`
         ])
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${responseData.message || 'Unknown error'}`)
+        }
 
         return responseData
       } catch (error) {
@@ -107,7 +113,9 @@ export default function AdminDashboard() {
         setLogs(prev => [
           ...prev, 
           `[${new Date().toISOString()}] Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          error instanceof Error && error.stack ? `Stack trace: ${error.stack}` : ''
+          error instanceof Error && error.stack ? `Stack trace: ${error.stack}` : '',
+          `Current origin: ${window.location.origin}`,
+          `Full request URL: ${window.location.origin}${data.endpoint}`
         ].filter(Boolean))
         throw error
       }

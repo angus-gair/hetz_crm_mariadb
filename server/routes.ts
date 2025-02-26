@@ -123,21 +123,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Build GraphQL schema
-  const schema = await buildSchema({
-    resolvers: [SuiteCRMResolver],
-    emitSchemaFile: true,
+  // Error handling middleware
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('Unhandled error:', err);
+    console.error('Stack trace:', err.stack);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: err.message,
+      path: req.path,
+      timestamp: new Date().toISOString()
+    });
   });
-
-  // Create Apollo Server
-  const apolloServer = new ApolloServer({
-    schema,
-  });
-
-  await apolloServer.start();
-
-  // Mount GraphQL endpoint
-  app.use('/graphql', expressMiddleware(apolloServer));
 
   // Create HTTP server
   const httpServer = createServer(app);
