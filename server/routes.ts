@@ -4,7 +4,6 @@ import { db } from "@db";
 import { sql } from "drizzle-orm";
 import fetch from "node-fetch";
 
-
 export async function registerRoutes(app: Express): Promise<Server> {
   // Global middleware
   app.use(express.json());
@@ -39,11 +38,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Database check endpoint
+  // Database check endpoint using Drizzle ORM
   app.get('/api/db-check', async (req, res) => {
     try {
-      // Simple query to check database connection
-      await db.execute(sql`SELECT 1`);
+      // Simple query to check database connection using raw SQL through Drizzle
+      const result = await db.execute(sql`SELECT 1 as test`);
+      console.log('Database check result:', result);
 
       // Get database connection info
       const dbUrl = new URL(process.env.DATABASE_URL || '');

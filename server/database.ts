@@ -1,20 +1,34 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 import { config } from './config';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 
+// Configure connection pool with limits and timeouts
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  max: 5, // Maximum number of clients in the pool
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
 });
+
+// Create drizzle instance
+export const db = drizzle(pool);
 
 // Helper function to execute queries
 export async function query<T>(sql: string, params?: any[]): Promise<T> {
+  const client = await pool.connect();
   try {
-    const { rows } = await pool.query(sql, params);
+    console.log('Executing query:', sql, 'with params:', params);
+    const { rows } = await client.query(sql, params);
     return rows as T;
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
+  } finally {
+    client.release();
+    console.log('Database connection released');
   }
 }
 
@@ -46,13 +60,14 @@ export async function saveConsultation(consultationData: {
     RETURNING id
   `;
 
+  const client = await pool.connect();
   try {
     const formattedDate = consultationData.preferredDate ? formatDate(consultationData.preferredDate) : null;
     const formattedTime = consultationData.preferredTime || null;
 
     console.log('2. Formatted date and time for PostgreSQL:', { formattedDate, formattedTime });
 
-    const result = await query<[{ id: number }]>(sql, [
+    const result = await client.query(sql, [
       consultationData.name,
       consultationData.email,
       consultationData.phone,
@@ -61,19 +76,27 @@ export async function saveConsultation(consultationData: {
       formattedTime
     ]);
 
-    console.log('3. PostgreSQL insertion result:', result);
-    return result[0].id;
+    console.log('3. PostgreSQL insertion result:', result.rows[0]);
+    return result.rows[0].id;
   } catch (error) {
     console.error('4. Error saving consultation to PostgreSQL:', error);
     throw error;
+  } finally {
+    client.release();
+    console.log('5. Database connection released after consultation save');
   }
 }
 
 // Initialize database tables
 export async function initDatabase() {
+  const client = await pool.connect();
   try {
     console.log('Initializing database connection to:', process.env.DATABASE_URL);
-    const client = await pool.connect();
+    console.log('Current pool status:', {
+      totalCount: pool.totalCount,
+      idleCount: pool.idleCount,
+      waitingCount: pool.waitingCount
+    });
 
     // Create consultations table if it doesn't exist
     const createConsultationsTable = `
@@ -115,12 +138,30 @@ export async function initDatabase() {
     await client.query(createSyncRecordsTable);
     console.log('Database tables verified/created');
 
-    client.release();
+    // Initialize Drizzle migrations if needed
+    // await migrate(db, { migrationsFolder: './drizzle' });
+
     return true;
   } catch (error) {
     console.error('Failed to initialize database:', error);
     throw error;
+  } finally {
+    client.release();
+    console.log('Database initialization connection released');
   }
 }
+
+// Add event listeners for pool events
+pool.on('connect', () => {
+  console.log('New client connected to the pool');
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+});
+
+pool.on('remove', () => {
+  console.log('Client removed from pool');
+});
 
 export default pool;
