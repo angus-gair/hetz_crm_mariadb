@@ -14,7 +14,7 @@ function Router() {
       {/* Main homepage route */}
       <Route path="/" component={HomePage} />
 
-      {/* Admin page */}
+      {/* Admin dashboard */}
       <Route path="/admin" component={AdminPage} />
 
       {/* Fallback to 404 */}

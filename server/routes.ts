@@ -43,7 +43,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Health check endpoint
   app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
+    res.json({ 
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      version: process.env.npm_package_version || '1.0.0',
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+
+  // Database check endpoint
+  app.get('/api/db-check', async (req, res) => {
+    try {
+      // Simple query to check database connection
+      await db.query.users.findMany();
+      res.json({ 
+        status: 'ok',
+        message: 'Database connection successful',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Database check failed:', error);
+      res.status(500).json({
+        status: 'error',
+        message: 'Database connection failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+    }
   });
 
   // Contact Form Handler
