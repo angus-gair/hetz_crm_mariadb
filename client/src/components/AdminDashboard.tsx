@@ -73,36 +73,42 @@ export default function AdminDashboard() {
   const testMutation = useMutation({
     mutationFn: async (data: TestConfig) => {
       const startTime = performance.now()
-      
+
       try {
         // Parse JSON strings
         const payload = JSON.parse(data.payload)
         const headers = JSON.parse(data.headers)
-        
+
         // Add to logs
         setLogs(prev => [...prev, `[${new Date().toISOString()}] Sending ${data.method} request to ${data.endpoint}`])
-        
+        setLogs(prev => [...prev, `Request payload: ${JSON.stringify(payload, null, 2)}`])
+        setLogs(prev => [...prev, `Request headers: ${JSON.stringify(headers, null, 2)}`])
+
         // Make request
         const response = await fetch(data.endpoint, {
           method: data.method,
           headers,
           body: data.method !== 'GET' ? JSON.stringify(payload) : undefined
         })
-        
+
         const responseData = await response.json()
         const duration = performance.now() - startTime
-        
+
         // Log response
         setLogs(prev => [
           ...prev,
           `[${new Date().toISOString()}] Response ${response.status} (${duration.toFixed(2)}ms)`,
           `Response data: ${JSON.stringify(responseData, null, 2)}`
         ])
-        
+
         return responseData
       } catch (error) {
-        // Log error
-        setLogs(prev => [...prev, `[${new Date().toISOString()}] Error: ${error instanceof Error ? error.message : 'Unknown error'}`])
+        // Log error details
+        setLogs(prev => [
+          ...prev, 
+          `[${new Date().toISOString()}] Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error instanceof Error && error.stack ? `Stack trace: ${error.stack}` : ''
+        ].filter(Boolean))
         throw error
       }
     },
@@ -128,7 +134,7 @@ export default function AdminDashboard() {
   return (
     <div className="container mx-auto p-6 space-y-8">
       <h1 className="text-3xl font-bold">API Admin Dashboard</h1>
-      
+
       {/* System Status */}
       <section className="grid md:grid-cols-2 gap-4">
         <Card className="p-4">
