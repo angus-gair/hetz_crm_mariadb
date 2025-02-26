@@ -18,6 +18,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   validateConfig();
   await initDatabase();
 
+  // Global middleware
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
   // Build GraphQL schema
   const schema = await buildSchema({
     resolvers: [SuiteCRMResolver],
@@ -59,7 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contact Form Handler
-  apiRouter.post('/contacts', express.json(), async (req, res) => {
+  apiRouter.post('/contacts', async (req, res) => {
     console.log('=== Contact Form Submission ===');
     console.log('Request payload:', req.body);
 
@@ -111,7 +115,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount GraphQL endpoint
   app.use('/graphql', 
-    express.json(),
     expressMiddleware(apolloServer)
   );
 
