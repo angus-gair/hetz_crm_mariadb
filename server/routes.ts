@@ -22,24 +22,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Build GraphQL schema
-  const schema = await buildSchema({
-    resolvers: [SuiteCRMResolver],
-    emitSchemaFile: true,
-  });
-
-  // Create Apollo Server
-  const apolloServer = new ApolloServer({
-    schema,
-  });
-
-  await apolloServer.start();
-
-  // API Routes
-  const apiRouter = express.Router();
-
   // Request logging middleware
-  apiRouter.use((req, res, next) => {
+  app.use((req, res, next) => {
     const timestamp = new Date().toISOString();
     console.log(`${timestamp} [express] ${req.method} ${req.path} - Request started`);
     console.log('Request headers:', req.headers);
@@ -58,12 +42,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Health check endpoint
-  apiRouter.get('/health', (req, res) => {
+  app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
   });
 
   // Contact Form Handler
-  apiRouter.post('/contacts', async (req, res) => {
+  app.post('/api/contacts', async (req, res) => {
     console.log('=== Contact Form Submission ===');
     console.log('Request payload:', req.body);
 
@@ -113,13 +97,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Build GraphQL schema
+  const schema = await buildSchema({
+    resolvers: [SuiteCRMResolver],
+    emitSchemaFile: true,
+  });
+
+  // Create Apollo Server
+  const apolloServer = new ApolloServer({
+    schema,
+  });
+
+  await apolloServer.start();
+
   // Mount GraphQL endpoint
-  app.use('/graphql', 
-    expressMiddleware(apolloServer)
-  );
+  app.use('/graphql', expressMiddleware(apolloServer));
 
-  // Mount API routes
-  app.use('/api', apiRouter);
+  // Create HTTP server
+  const httpServer = createServer(app);
 
-  return createServer(app);
+  return httpServer;
 }
