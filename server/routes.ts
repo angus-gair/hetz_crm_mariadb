@@ -59,7 +59,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contact Form Handler
-  apiRouter.post('/contacts', async (req, res) => {
+  apiRouter.post('/contacts', express.json(), async (req, res) => {
     console.log('=== Contact Form Submission ===');
     console.log('Request payload:', req.body);
 
