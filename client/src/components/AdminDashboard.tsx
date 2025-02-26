@@ -111,7 +111,7 @@ export default function AdminDashboard() {
       } catch (error) {
         // Log error details
         setLogs(prev => [
-          ...prev, 
+          ...prev,
           `[${new Date().toISOString()}] Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
           error instanceof Error && error.stack ? `Stack trace: ${error.stack}` : '',
           `Current origin: ${window.location.origin}`,
@@ -147,15 +147,15 @@ export default function AdminDashboard() {
       <section className="grid md:grid-cols-2 gap-4">
         <Card className="p-4">
           <h2 className="text-xl font-semibold mb-4">System Status</h2>
-          <div className="space-y-2">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span>API Health:</span>
               {healthCheck.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : healthCheck.isError ? (
-                <span className="text-red-500">●</span>
+                <span className="text-red-500" title={healthCheck.error?.message}>●</span>
               ) : (
-                <span className="text-green-500">●</span>
+                <span className="text-green-500" title="API is healthy">●</span>
               )}
             </div>
             <div className="flex items-center justify-between">
@@ -163,11 +163,33 @@ export default function AdminDashboard() {
               {dbCheck.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : dbCheck.isError ? (
-                <span className="text-red-500">●</span>
+                <span className="text-red-500" title={dbCheck.error?.message}>●</span>
               ) : (
-                <span className="text-green-500">●</span>
+                <span className="text-green-500" title="Database is connected">●</span>
               )}
             </div>
+            {/* Database Details */}
+            {dbCheck.data && (
+              <div className="mt-4 text-sm">
+                <h3 className="font-semibold mb-2">Database Info:</h3>
+                <div className="bg-gray-50 p-2 rounded">
+                  <p>Type: {dbCheck.data.type}</p>
+                  <p>Host: {dbCheck.data.connection.host}</p>
+                  <p>Port: {dbCheck.data.connection.port}</p>
+                  <p>Database: {dbCheck.data.connection.database}</p>
+                  <p>SSL Mode: {dbCheck.data.connection.ssl}</p>
+                </div>
+              </div>
+            )}
+            {/* Database Error Details */}
+            {dbCheck.error && (
+              <div className="mt-4 text-sm text-red-500">
+                <h3 className="font-semibold mb-2">Database Error:</h3>
+                <pre className="bg-red-50 p-2 rounded whitespace-pre-wrap">
+                  {dbCheck.error instanceof Error ? dbCheck.error.message : 'Unknown error'}
+                </pre>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -238,8 +260,8 @@ export default function AdminDashboard() {
                 )}
               />
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full"
                 disabled={testMutation.isPending}
               >

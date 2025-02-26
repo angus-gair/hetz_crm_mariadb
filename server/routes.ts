@@ -1,23 +1,11 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
-import { ApolloServer } from "@apollo/server";
-import { expressMiddleware } from "@apollo/server/express4";
-import { buildSchema } from "type-graphql";
-import { SuiteCRMResolver } from "./graphql/resolvers";
-import { validateConfig } from "./config";
-import { initDatabase } from "./database";
-import axios from "axios";
 import { db } from "@db";
+import { sql } from "drizzle-orm";
+import fetch from "node-fetch";
 
-// Get API configuration from environment
-const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:3000/custom-api";
-const API_TOKEN = process.env.API_TOKEN || "your_default_token";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Validate config and initialize database
-  validateConfig();
-  await initDatabase();
-
   // Global middleware
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
@@ -55,11 +43,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/db-check', async (req, res) => {
     try {
       // Simple query to check database connection
-      await db.query.users.findMany();
+      await db.execute(sql`SELECT 1`);
+
+      // Get database connection info
+      const dbUrl = new URL(process.env.DATABASE_URL || '');
+
       res.json({ 
         status: 'ok',
         message: 'Database connection successful',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        connection: {
+          host: dbUrl.hostname,
+          port: dbUrl.port,
+          database: dbUrl.pathname.substring(1),
+          user: dbUrl.username,
+          ssl: dbUrl.searchParams.get('sslmode') || 'prefer'
+        },
+        type: 'postgresql'
       });
     } catch (error) {
       console.error('Database check failed:', error);
@@ -67,7 +67,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'error',
         message: 'Database connection failed',
         error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        details: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : undefined
       });
     }
   });
@@ -87,39 +92,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      console.log('Making request to API endpoint:', `${API_BASE_URL}/api-proxy.php/contacts`);
-      const response = await axios.post(`${API_BASE_URL}/api-proxy.php/contacts`, req.body, {
+      const response = await fetch(`${process.env.API_BASE_URL}/api-proxy.php/contacts`, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${API_TOKEN}`,
+          'Authorization': `Bearer ${process.env.API_TOKEN}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify(req.body)
       });
 
-      // Log success response
-      console.log('API Response:', {
-        status: response.status,
-        data: response.data
-      });
-
-      res.status(response.status).json(response.data);
-    } catch (error) {
-      console.error('API Error:', error);
-
-      if (axios.isAxiosError(error)) {
-        console.error('Full error response:', error.response?.data);
-        const status = error.response?.status || 500;
-        const message = error.response?.data?.message || 'An error occurred while processing your request';
-        console.error('Error details:', {
-          status,
-          message,
-          response: error.response?.data,
-          requestBody: req.body
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: errorData
         });
-        res.status(status).json({ message });
-      } else {
-        console.error('Unexpected error:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        return res.status(response.status).json(errorData);
       }
+
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error('Error processing contact form:', error);
+      res.status(500).json({ 
+        message: 'An error occurred while processing your request',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
