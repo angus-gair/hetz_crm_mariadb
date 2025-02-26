@@ -1,4 +1,4 @@
-URL: https://replit.com/@angus11/Version-2#custom-api/working%20files/react-integration-check.js
+URL: https://replit.com/@angus11/Version-2#custom-api/working%20files/frontend-path-fix.ts
 ---
 [Skip to content](https://replit.com/@angus11/Version-2#main-content)
 
@@ -56,6 +56,6 @@ Page not found
 
 If you think this is a mistake, check the [status page](https://status.replit.com/) for active incidents, [contact support](https://replit.com/support) or [ask the community](https://replit.com/community).\_
 
-[iframe](https://js.stripe.com/v3/controller-with-preconnect-787ca55a3fd81b33eecc736b75b0a067.html#apiKey=pk_live_515YpNsJAmnYVOvfnsBqRdATWS6SzbNAslOz1z2tujdKuvRMDAwWMeFXp6dJL1YKRrQjB0WAp0UDGwlFYL7hxw7Fc00QkfxBFsL&stripeJsId=3df3f06c-896c-4d4a-8324-4e07cc0a9326&controllerCount=1&isCheckout=false&stripeJsLoadTime=1740526570220&manualBrowserDeprecationRollout=false&mids[guid]=NA&mids[muid]=NA&mids[sid]=NA&referrer=https%3A%2F%2Freplit.com%2F%40angus11%2FVersion-2%23custom-api%2Fworking%2520files%2Freact-integration-check.js&controllerId=__privateStripeController3101)
+[iframe](https://js.stripe.com/v3/controller-with-preconnect-787ca55a3fd81b33eecc736b75b0a067.html#apiKey=pk_live_515YpNsJAmnYVOvfnsBqRdATWS6SzbNAslOz1z2tujdKuvRMDAwWMeFXp6dJL1YKRrQjB0WAp0UDGwlFYL7hxw7Fc00QkfxBFsL&stripeJsId=871026c2-78c7-4049-9ca8-eaf3bb43411c&controllerCount=1&isCheckout=false&stripeJsLoadTime=1740576323947&manualBrowserDeprecationRollout=false&mids[guid]=NA&mids[muid]=NA&mids[sid]=NA&referrer=https%3A%2F%2Freplit.com%2F%40angus11%2FVersion-2%23custom-api%2Fworking%2520files%2Ffrontend-path-fix.ts&controllerId=__privateStripeController9851)
 
-[iframe](https://www.google.com/recaptcha/enterprise/anchor?ar=1&k=6LdqhwwoAAAAAFPdw8jCuvY3PaHQItGj3RzOS4fW&co=aHR0cHM6Ly9yZXBsaXQuY29tOjQ0Mw..&hl=en&v=IyZ984yGrXrBd6ihLOYGwy9X&size=invisible&cb=qm2nvrex1rxq)
+[iframe](https://www.google.com/recaptcha/enterprise/anchor?ar=1&k=6LdqhwwoAAAAAFPdw8jCuvY3PaHQItGj3RzOS4fW&co=aHR0cHM6Ly9yZXBsaXQuY29tOjQ0Mw..&hl=en&v=rW64dpMGAGrjU7JJQr9xxPl8&size=invisible&cb=z42n17dxfbc)
