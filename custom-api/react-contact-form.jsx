@@ -8,10 +8,13 @@ const ContactForm = ({ apiUrl, apiToken, onSuccess, onError }) => {
     last_name: '',
     email: '',
     phone_mobile: '',
+    address: '',
     description: '',
     marketingConsent: false,
     lead_source: 'Website'
   });
+
+  const [addressInput, setAddressInput] = useState(null);
 
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -234,6 +237,27 @@ const ContactForm = ({ apiUrl, apiToken, onSuccess, onError }) => {
             rows="4"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           ></textarea>
+        </div>
+
+        <div className="mb-4">
+          <label htmlFor="address" className="block text-gray-700 font-medium mb-2">
+            Address
+          </label>
+          <GooglePlacesAutocomplete
+            apiKey={process.env.GOOGLE_MAPS_API_KEY}
+            selectProps={{
+              value: addressInput,
+              onChange: (value) => {
+                setAddressInput(value);
+                setFormData(prev => ({
+                  ...prev,
+                  address: value?.label || ''
+                }));
+              },
+              className: "w-full",
+              placeholder: "Start typing your address..."
+            }}
+          />
         </div>
         
         <div className="mb-6">
