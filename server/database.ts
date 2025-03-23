@@ -10,7 +10,14 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 5, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+  connectionTimeoutMillis: 5000, // Return an error after 5 seconds if connection could not be established
+  // Add a retry strategy for transient connection failures
+  retry: {
+    retries: 3,
+    factor: 2,
+    minTimeout: 1000,
+    maxTimeout: 10000,
+  },
 });
 
 // Create drizzle instance
@@ -87,68 +94,98 @@ export async function saveConsultation(consultationData: {
   }
 }
 
-// Initialize database tables
+// Initialize database tables with retry logic
 export async function initDatabase() {
-  const client = await pool.connect();
-  try {
-    console.log('Initializing database connection to:', process.env.DATABASE_URL);
-    console.log('Current pool status:', {
-      totalCount: pool.totalCount,
-      idleCount: pool.idleCount,
-      waitingCount: pool.waitingCount
-    });
+  let retries = 3;
+  let lastError;
+  
+  // Function to try connecting with exponential backoff
+  const tryConnect = async (attempt: number) => {
+    try {
+      console.log(`Database connection attempt ${attempt}/${retries}`);
+      
+      const client = await pool.connect();
+      try {
+        console.log('Initializing database connection to:', process.env.DATABASE_URL);
+        console.log('Current pool status:', {
+          totalCount: pool.totalCount,
+          idleCount: pool.idleCount,
+          waitingCount: pool.waitingCount
+        });
 
-    // Create consultations table if it doesn't exist
-    const createConsultationsTable = `
-      CREATE TABLE IF NOT EXISTS consultations (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        phone VARCHAR(50) NOT NULL,
-        notes TEXT,
-        preferred_date DATE,
-        preferred_time TIME,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        crm_sync_status VARCHAR(10) DEFAULT 'pending' CHECK (crm_sync_status IN ('pending', 'synced', 'failed')),
-        crm_sync_attempts INTEGER DEFAULT 0,
-        crm_last_sync TIMESTAMP,
-        crm_error TEXT
-      )
-    `;
+        // Create consultations table if it doesn't exist
+        const createConsultationsTable = `
+          CREATE TABLE IF NOT EXISTS consultations (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            phone VARCHAR(50) NOT NULL,
+            notes TEXT,
+            preferred_date DATE,
+            preferred_time TIME,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            crm_sync_status VARCHAR(10) DEFAULT 'pending' CHECK (crm_sync_status IN ('pending', 'synced', 'failed')),
+            crm_sync_attempts INTEGER DEFAULT 0,
+            crm_last_sync TIMESTAMP,
+            crm_error TEXT
+          )
+        `;
 
-    // Create sync_records table if it doesn't exist
-    const createSyncRecordsTable = `
-      CREATE TABLE IF NOT EXISTS sync_records (
-        id SERIAL PRIMARY KEY,
-        direction VARCHAR(20) NOT NULL CHECK (direction IN ('mysql_to_crm', 'crm_to_mysql')),
-        entity_type VARCHAR(50) NOT NULL,
-        entity_id INTEGER NOT NULL,
-        status VARCHAR(10) DEFAULT 'pending' CHECK (status IN ('pending', 'success', 'failed')),
-        attempts INTEGER DEFAULT 0,
-        error TEXT,
-        last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+        // Create sync_records table if it doesn't exist
+        const createSyncRecordsTable = `
+          CREATE TABLE IF NOT EXISTS sync_records (
+            id SERIAL PRIMARY KEY,
+            direction VARCHAR(20) NOT NULL CHECK (direction IN ('mysql_to_crm', 'crm_to_mysql')),
+            entity_type VARCHAR(50) NOT NULL,
+            entity_id INTEGER NOT NULL,
+            status VARCHAR(10) DEFAULT 'pending' CHECK (status IN ('pending', 'success', 'failed')),
+            attempts INTEGER DEFAULT 0,
+            error TEXT,
+            last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-      CREATE INDEX IF NOT EXISTS idx_sync_status ON sync_records (status, attempts);
-      CREATE INDEX IF NOT EXISTS idx_entity ON sync_records (entity_type, entity_id);
-    `;
+          CREATE INDEX IF NOT EXISTS idx_sync_status ON sync_records (status, attempts);
+          CREATE INDEX IF NOT EXISTS idx_entity ON sync_records (entity_type, entity_id);
+        `;
 
-    await client.query(createConsultationsTable);
-    await client.query(createSyncRecordsTable);
-    console.log('Database tables verified/created');
+        await client.query(createConsultationsTable);
+        await client.query(createSyncRecordsTable);
+        console.log('Database tables verified/created');
 
-    // Initialize Drizzle migrations if needed
-    // await migrate(db, { migrationsFolder: './drizzle' });
-
-    return true;
-  } catch (error) {
-    console.error('Failed to initialize database:', error);
-    throw error;
-  } finally {
-    client.release();
-    console.log('Database initialization connection released');
+        return true;
+      } finally {
+        client.release();
+        console.log('Database initialization connection released');
+      }
+    } catch (error) {
+      console.error(`Database connection attempt ${attempt} failed:`, error);
+      lastError = error;
+      
+      if (attempt < retries) {
+        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000);
+        console.log(`Retrying in ${backoffMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+        return false;
+      }
+      return false;
+    }
+  };
+  
+  // Try to connect multiple times
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const success = await tryConnect(attempt);
+    if (success) return true;
   }
+  
+  // If all retries failed, check if we can proceed without the database
+  console.warn('All database connection attempts failed. Continuing with limited functionality.');
+  if (lastError) {
+    console.error('Last error:', lastError);
+  }
+  
+  // Return false but don't throw - allow the application to start with limited functionality
+  return false;
 }
 
 // Add event listeners for pool events

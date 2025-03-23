@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuiteCRM Contacts Integration Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .test-section {
+      background-color: #f5f5f5;
+      border-radius: 5px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .test-section h2 {
+      margin-top: 0;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #connectionTestResult, #contactCreationResult, #moduleFieldsResult {
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #dff0d8;
+      border: 1px solid #d6e9c6;
+      color: #3c763d;
+    }
+    .error {
+      background-color: #f2dede;
+      border: 1px solid #ebccd1;
+      color: #a94442;
+    }
+    pre {
+      background-color: #f8f8f8;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      overflow: auto;
+      max-height: 300px;
+    }
+  </style>
+</head>
+<body>
+  <h1>SuiteCRM Contacts Integration Test</h1>
+  
+  <div class="test-section">
+    <h2>1. Test Connection</h2>
+    <p>Check if the connection to SuiteCRM API is working properly.</p>
+    <button id="testConnectionBtn">Test Connection</button>
+    <div id="connectionTestResult"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>2. Get Contacts Module Fields</h2>
+    <p>Retrieve the available fields for the Contacts module.</p>
+    <button id="getModuleFieldsBtn">Get Module Fields</button>
+    <div id="moduleFieldsResult"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>3. Create Contact</h2>
+    <p>Create a new contact in SuiteCRM.</p>
+    <form id="createContactForm">
+      <div class="form-group">
+        <label for="firstName">First Name *</label>
+        <input type="text" id="firstName" name="firstName" required>
+      </div>
+      <div class="form-group">
+        <label for="lastName">Last Name *</label>
+        <input type="text" id="lastName" name="lastName" required>
+      </div>
+      <div class="form-group">
+        <label for="email">Email *</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label for="phone">Phone</label>
+        <input type="text" id="phone" name="phone">
+      </div>
+      <div class="form-group">
+        <label for="message">Message/Notes</label>
+        <textarea id="message" name="message" rows="4"></textarea>
+      </div>
+      <button type="submit">Create Contact</button>
+    </form>
+    <div id="contactCreationResult"></div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Test Connection
+      document.getElementById('testConnectionBtn').addEventListener('click', async function() {
+        const resultDiv = document.getElementById('connectionTestResult');
+        resultDiv.innerHTML = 'Testing connection...';
+        resultDiv.className = '';
+        
+        try {
+          const response = await fetch('/api/crm/test');
+          const data = await response.json();
+          
+          if (data.success) {
+            resultDiv.innerHTML = `<p>Connection successful! ${data.message}</p>`;
+            resultDiv.className = 'success';
+          } else {
+            resultDiv.innerHTML = `<p>Connection failed: ${data.message || 'Unknown error'}</p>`;
+            resultDiv.className = 'error';
+          }
+        } catch (error) {
+          resultDiv.innerHTML = `<p>Error testing connection: ${error.message}</p>`;
+          resultDiv.className = 'error';
+        }
+      });
+      
+      // Get Module Fields
+      document.getElementById('getModuleFieldsBtn').addEventListener('click', async function() {
+        const resultDiv = document.getElementById('moduleFieldsResult');
+        resultDiv.innerHTML = 'Fetching module fields...';
+        resultDiv.className = '';
+        
+        try {
+          // Using GraphQL to get module fields
+          const query = `
+            query {
+              getSuiteCRMModuleFields(moduleName: "Contacts") {
+                success
+                moduleName
+                error
+                data
+              }
+            }
+          `;
+          
+          const response = await fetch('/graphql', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query })
+          });
+          
+          const data = await response.json();
+          
+          if (data.data && data.data.getSuiteCRMModuleFields.success) {
+            resultDiv.innerHTML = `
+              <p>Successfully retrieved module fields for Contacts</p>
+              <pre>${JSON.stringify(data.data.getSuiteCRMModuleFields.data, null, 2)}</pre>
+            `;
+            resultDiv.className = 'success';
+          } else {
+            const error = data.data ? data.data.getSuiteCRMModuleFields.error : 'Unknown error';
+            resultDiv.innerHTML = `<p>Failed to get module fields: ${error}</p>`;
+            resultDiv.className = 'error';
+          }
+        } catch (error) {
+          resultDiv.innerHTML = `<p>Error fetching module fields: ${error.message}</p>`;
+          resultDiv.className = 'error';
+        }
+      });
+      
+      // Create Contact
+      document.getElementById('createContactForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const resultDiv = document.getElementById('contactCreationResult');
+        resultDiv.innerHTML = 'Creating contact...';
+        resultDiv.className = '';
+        
+        const formData = {
+          firstName: document.getElementById('firstName').value,
+          lastName: document.getElementById('lastName').value,
+          email: document.getElementById('email').value,
+          phone: document.getElementById('phone').value,
+          message: document.getElementById('message').value
+        };
+        
+        try {
+          const response = await fetch('/api/crm/contacts', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            resultDiv.innerHTML = `
+              <p>Contact created successfully!</p>
+              <p>ID: ${data.id}</p>
+              <p>${data.message}</p>
+            `;
+            resultDiv.className = 'success';
+            // Clear form
+            this.reset();
+          } else {
+            resultDiv.innerHTML = `<p>Failed to create contact: ${data.message || data.error || 'Unknown error'}</p>`;
+            resultDiv.className = 'error';
+          }
+        } catch (error) {
+          resultDiv.innerHTML = `<p>Error creating contact: ${error.message}</p>`;
+          resultDiv.className = 'error';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
