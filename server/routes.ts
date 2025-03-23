@@ -272,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await apolloServer.start();
     console.log("Apollo Server started");
 
-    // Apply Apollo middleware to Express
+    // Apply Apollo middleware to Express with CORS
     app.use(
       "/graphql",
       expressMiddleware(apolloServer, {

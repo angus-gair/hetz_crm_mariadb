@@ -11,13 +11,6 @@ const pool = new Pool({
   max: 5, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
   connectionTimeoutMillis: 5000, // Return an error after 5 seconds if connection could not be established
-  // Add a retry strategy for transient connection failures
-  retry: {
-    retries: 3,
-    factor: 2,
-    minTimeout: 1000,
-    maxTimeout: 10000,
-  },
 });
 
 // Create drizzle instance
