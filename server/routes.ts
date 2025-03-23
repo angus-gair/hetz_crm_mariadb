@@ -1,8 +1,13 @@
-import express, { type Express } from "express";
+import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { sql } from "drizzle-orm";
 import fetch from "node-fetch";
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@apollo/server/express4";
+import { buildSchema } from "type-graphql";
+import { suiteCRMService } from "./services/suitecrm";
+import { SuiteCRMResolver } from "./graphql/resolvers";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Global middleware
@@ -122,8 +127,165 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // SuiteCRM API test endpoint
+  app.get("/api/crm/test", async (req, res) => {
+    try {
+      const isConnected = await suiteCRMService.testConnection();
+
+      if (isConnected) {
+        res.json({
+          success: true,
+          message: "SuiteCRM API connection is working correctly",
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        throw new Error("Connection test returned false");
+      }
+    } catch (error: any) {
+      console.error("SuiteCRM API test failed:", error);
+
+      res.status(500).json({
+        success: false,
+        error: error.message || "Unknown error",
+        message: "SuiteCRM API test failed. Check server logs for details."
+      });
+    }
+  });
+
+  // Create contact endpoint
+  app.post("/api/crm/contacts", async (req, res) => {
+    try {
+      const contactData = {
+        firstName: req.body.firstName || req.body.first_name || '',
+        lastName: req.body.lastName || req.body.last_name || '',
+        email: req.body.email || req.body.email1 || '',
+        phone: req.body.phone || req.body.phone_work || '',
+        message: req.body.message || req.body.description || ''
+      };
+
+      console.log('Contact creation request data:', JSON.stringify({
+        firstName: contactData.firstName,
+        lastName: contactData.lastName,
+        email: contactData.email
+      }));
+
+      if (!contactData.firstName || !contactData.lastName || !contactData.email) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing required fields",
+          message: "First name, last name, and email are required"
+        });
+      }
+
+      const result = await suiteCRMService.createContact(contactData);
+
+      if (result.success) {
+        res.status(201).json({
+          success: true,
+          id: result.id,
+          message: "Contact created successfully"
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: result.error || "Unknown error",
+          message: "Failed to create contact in SuiteCRM"
+        });
+      }
+    } catch (error: any) {
+      console.error("Contact creation failed:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Unknown error",
+        message: "Failed to create contact. Check server logs for details."
+      });
+    }
+  });
+
+  // Create consultation meeting endpoint
+  app.post("/api/crm/consultations", async (req, res) => {
+    try {
+      const consultationData = {
+        name: req.body.name || '',
+        email: req.body.email || '',
+        phone: req.body.phone || '',
+        notes: req.body.notes || req.body.message || '',
+        preferredDate: req.body.preferredDate || req.body.date || '',
+        preferredTime: req.body.preferredTime || req.body.time || ''
+      };
+
+      console.log('Consultation creation request data:', JSON.stringify({
+        name: consultationData.name,
+        email: consultationData.email,
+        preferredDate: consultationData.preferredDate
+      }));
+
+      if (!consultationData.name || !consultationData.email || !consultationData.phone) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing required fields",
+          message: "Name, email, and phone are required"
+        });
+      }
+
+      const result = await suiteCRMService.createConsultationMeeting(consultationData);
+
+      if (result.success) {
+        res.status(201).json({
+          success: true,
+          message: result.message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: result.message
+        });
+      }
+    } catch (error: any) {
+      console.error("Consultation creation failed:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Unknown error",
+        message: "Failed to create consultation. Check server logs for details."
+      });
+    }
+  });
+
+  // Set up Apollo GraphQL Server
+  try {
+    console.log("Setting up GraphQL server...");
+    
+    // Build TypeGraphQL schema
+    const schema = await buildSchema({
+      resolvers: [SuiteCRMResolver],
+      emitSchemaFile: process.env.NODE_ENV === "development",
+      validate: false,
+    });
+
+    // Create Apollo Server
+    const apolloServer = new ApolloServer({
+      schema,
+    });
+
+    // Start Apollo Server
+    await apolloServer.start();
+    console.log("Apollo Server started");
+
+    // Apply Apollo middleware to Express
+    app.use(
+      "/graphql",
+      expressMiddleware(apolloServer, {
+        context: async ({ req }) => ({ req }),
+      })
+    );
+
+    console.log("GraphQL endpoint registered at /graphql");
+  } catch (error) {
+    console.error("Failed to set up GraphQL server:", error);
+  }
+
   // Error handling middleware
-  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     console.error('Unhandled error:', err);
     console.error('Stack trace:', err.stack);
     res.status(500).json({
