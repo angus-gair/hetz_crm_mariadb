@@ -59,17 +59,23 @@ export class SuiteCRMService {
     }
   }
 
-  // Refresh OAuth token using client credentials
+  // Refresh OAuth token using password grant
   private async refreshToken(): Promise<string> {
     const clientId = process.env.SUITECRM_CLIENT_ID;
     const clientSecret = process.env.SUITECRM_CLIENT_SECRET;
+    const username = process.env.SUITECRM_USERNAME;
+    const password = process.env.SUITECRM_PASSWORD;
 
     if (!clientId || !clientSecret) {
       throw new Error('SuiteCRM client credentials not configured');
     }
 
+    if (!username || !password) {
+      throw new Error('SuiteCRM username/password not configured');
+    }
+
     try {
-      console.log('[SuiteCRM] Refreshing OAuth token...');
+      console.log('[SuiteCRM] Refreshing OAuth token with Password Grant...');
       
       const now = Date.now();
       if (this.lastLoginAttempt && (now - this.lastLoginAttempt) < this.loginRetryDelay) {
@@ -80,9 +86,11 @@ export class SuiteCRMService {
       const response = await axios.post<TokenResponse>(
         `${this.baseUrl}/Api/V8/oauth2/token`, 
         {
-          grant_type: 'client_credentials',
+          grant_type: 'password',
           client_id: clientId,
-          client_secret: clientSecret
+          client_secret: clientSecret,
+          username: username,
+          password: password
         }, 
         {
           headers: {
