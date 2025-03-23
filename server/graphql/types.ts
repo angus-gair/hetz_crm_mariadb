@@ -45,6 +45,48 @@ class EndpointStatus {
   }
 }
 
+@ObjectType()
+export class ModuleData {
+  @Field(() => Boolean)
+  success!: boolean;
+
+  @Field(() => String, { nullable: true })
+  error?: string;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  data?: any;
+}
+
+@ObjectType()
+export class ModuleField {
+  @Field(() => Boolean)
+  success!: boolean;
+
+  @Field(() => String)
+  moduleName!: string;
+
+  @Field(() => String, { nullable: true })
+  error?: string;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  data?: any;
+}
+
+@ObjectType()
+export class ModuleRecord {
+  @Field(() => Boolean)
+  success!: boolean;
+
+  @Field(() => String)
+  moduleName!: string;
+
+  @Field(() => String, { nullable: true })
+  error?: string;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  data?: any;
+}
+
 @InputType()
 export class SuiteCRMCredentials {
   @Field(() => String)
@@ -57,4 +99,43 @@ export class SuiteCRMCredentials {
     this.username = username;
     this.password = password;
   }
+}
+
+@InputType()
+export class ContactInput {
+  @Field(() => String)
+  firstName!: string;
+
+  @Field(() => String)
+  lastName!: string;
+
+  @Field(() => String)
+  email!: string;
+
+  @Field(() => String, { nullable: true })
+  phone?: string;
+
+  @Field(() => String, { nullable: true })
+  message?: string;
+}
+
+@InputType()
+export class ConsultationInput {
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  email!: string;
+
+  @Field(() => String)
+  phone!: string;
+
+  @Field(() => String, { nullable: true })
+  notes?: string;
+
+  @Field(() => String, { nullable: true })
+  preferredDate?: string;
+
+  @Field(() => String, { nullable: true })
+  preferredTime?: string;
 }

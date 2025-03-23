@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { createHash } from 'crypto';
 
+// Interfaces for SuiteCRM data types
 interface ConsultationData {
   name: string;
   email: string;
@@ -10,15 +10,25 @@ interface ConsultationData {
   preferredTime?: string;
 }
 
+interface TokenResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+  scope: null | string;
+  refresh_token?: string;
+}
+
 export class SuiteCRMService {
   private baseUrl: string;
   private readonly timeout: number = 30000;
-  private sessionId: string | null = null;
+  private accessToken: string | null = null;
+  private tokenExpiry: number | null = null;
+  private refreshPromise: Promise<string> | null = null;
   private lastLoginAttempt: number = 0;
   private readonly loginRetryDelay: number = 60000; // 1 minute
 
   constructor() {
-    let url = process.env.SUITECRM_URL || 'http://172.191.25.147';
+    let url = process.env.SUITECRM_URL || '';
     // Remove trailing slashes and ensure proper formatting
     url = url.replace(/\/+$/, '');
     if (!url.startsWith('http')) {
@@ -28,82 +38,128 @@ export class SuiteCRMService {
     console.log('[SuiteCRM] Service initialized with base URL:', this.baseUrl);
   }
 
-  private getApiEndpoint(): string {
-    return `${this.baseUrl}/service/v4_1/rest.php`;
-  }
+  // Get a valid token for API requests, refreshing if necessary
+  private async getValidToken(): Promise<string> {
+    // If there's already a refresh in progress, wait for it
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
 
-  private async login(): Promise<string> {
+    // If token is still valid, return it (5 min buffer before expiry)
+    if (this.accessToken && this.tokenExpiry && Date.now() < (this.tokenExpiry - 300000)) {
+      return this.accessToken;
+    }
+
+    // Start a new refresh
+    this.refreshPromise = this.refreshToken();
     try {
-      const now = Date.now();
-      if (this.lastLoginAttempt && (now - this.lastLoginAttempt) < this.loginRetryDelay) {
-        throw new Error('Login attempted too frequently');
-      }
-      this.lastLoginAttempt = now;
-
-      console.log('[SuiteCRM] Attempting to login...');
-
-      const username = process.env.SUITECRM_USERNAME;
-      const password = process.env.SUITECRM_PASSWORD;
-
-      if (!username || !password) {
-        throw new Error('SuiteCRM credentials not configured');
-      }
-
-      // Create MD5 hash of password as required by SuiteCRM
-      const passwordMd5 = createHash('md5').update(password).digest('hex');
-
-      const response = await axios.post(
-        this.getApiEndpoint(),
-        {
-          method: 'login',
-          input_type: 'JSON',
-          response_type: 'JSON',
-          rest_data: {
-            user_auth: {
-              user_name: username,
-              password: passwordMd5,
-              version: '4.1'
-            },
-            application: 'CubbyLuxe-Integration',
-            name_value_list: [],
-            link_name_to_fields_array: true
-          }
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          timeout: this.timeout,
-          validateStatus: function (status) {
-            return status < 500; // Accept any status less than 500
-          }
-        }
-      );
-
-      console.log('[SuiteCRM] Login response status:', response.status);
-
-      if (response.data?.id) {
-        this.sessionId = response.data.id;
-        console.log('[SuiteCRM] Login successful');
-        return response.data.id;
-      } else {
-        console.error('[SuiteCRM] Invalid login response:', response.data);
-        throw new Error('Invalid login response structure');
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('[SuiteCRM] Login failed:', errorMessage);
-      if (axios.isAxiosError(error)) {
-        console.error('[SuiteCRM] Response details:', {
-          status: error.response?.status,
-          data: error.response?.data
-        });
-      }
-      throw new Error(`Failed to authenticate with SuiteCRM: ${errorMessage}`);
+      return await this.refreshPromise;
+    } finally {
+      this.refreshPromise = null;
     }
   }
 
+  // Refresh OAuth token using client credentials
+  private async refreshToken(): Promise<string> {
+    const clientId = process.env.SUITECRM_CLIENT_ID;
+    const clientSecret = process.env.SUITECRM_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new Error('SuiteCRM client credentials not configured');
+    }
+
+    try {
+      console.log('[SuiteCRM] Refreshing OAuth token...');
+      
+      const now = Date.now();
+      if (this.lastLoginAttempt && (now - this.lastLoginAttempt) < this.loginRetryDelay) {
+        throw new Error('Token refresh attempted too frequently');
+      }
+      this.lastLoginAttempt = now;
+      
+      const response = await axios.post<TokenResponse>(
+        `${this.baseUrl}/Api/V8/oauth2/token`, 
+        {
+          grant_type: 'client_credentials',
+          client_id: clientId,
+          client_secret: clientSecret
+        }, 
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.api+json'
+          },
+          timeout: this.timeout
+        }
+      );
+
+      if (!response.data.access_token) {
+        throw new Error('No access token received');
+      }
+
+      this.accessToken = response.data.access_token;
+      this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
+      console.log('[SuiteCRM] Successfully refreshed OAuth token');
+      return this.accessToken;
+    } catch (error: any) {
+      console.error('[SuiteCRM] Failed to obtain OAuth token:', error.message);
+      this.accessToken = null;
+      this.tokenExpiry = null;
+      throw new Error(`Authentication failed: ${error.message}`);
+    }
+  }
+
+  // Make authenticated requests to SuiteCRM API
+  private async makeRequest<T = any>(endpoint: string, options: any = {}): Promise<T> {
+    try {
+      const token = await this.getValidToken();
+      const response = await axios({
+        ...options,
+        url: `${this.baseUrl}${endpoint}`,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.api+json',
+          'Content-Type': 'application/json'
+        },
+        timeout: this.timeout
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        // Clear token on unauthorized to force a refresh on next attempt
+        this.accessToken = null;
+        this.tokenExpiry = null;
+      }
+      console.error(`[SuiteCRM] API Request failed for ${endpoint}:`, error.message);
+      throw new Error(`API request failed: ${error.message}`);
+    }
+  }
+
+  // Test SuiteCRM API connection
+  async testConnection(): Promise<boolean> {
+    try {
+      // Try to connect to API endpoints
+      const token = await this.getValidToken();
+      const testEndpoint = '/Api/V8/meta/now';
+      const response = await axios.get(
+        `${this.baseUrl}${testEndpoint}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.api+json'
+          },
+          timeout: this.timeout
+        }
+      );
+      return response.status === 200;
+    } catch (error) {
+      console.error('[SuiteCRM] Connection test failed:', error);
+      return false;
+    }
+  }
+
+  // Create a new meeting (consultation) in SuiteCRM using API V8
   async createConsultationMeeting(consultationData: ConsultationData): Promise<{ success: boolean; message: string }> {
     try {
       // Format the date and time for the meeting
@@ -117,60 +173,36 @@ export class SuiteCRMService {
       const endDate = new Date(meetingDate);
       endDate.setHours(endDate.getHours() + 1);
 
-      // Format dates for SuiteCRM (YYYY-MM-DD HH:mm:ss)
+      // Format dates for SuiteCRM (ISO format for API V8)
       const formatDate = (date: Date) => {
-        return date.toISOString().replace('T', ' ').split('.')[0];
+        return date.toISOString();
       };
 
-      // Ensure we have a valid session
-      if (!this.sessionId) {
-        await this.login();
-      }
-
-      // REST v4 API payload with link_name_to_fields_array set to true
-      const restData = {
-        session: this.sessionId,
-        module_name: 'Meetings',
-        name_value_list: [
-          { name: 'name', value: `Consultation with ${consultationData.name}` },
-          { name: 'date_start', value: formatDate(meetingDate) },
-          { name: 'date_end', value: formatDate(endDate) },
-          { name: 'status', value: 'Planned' },
-          { name: 'description', value: `Contact Info:\nEmail: ${consultationData.email}\nPhone: ${consultationData.phone}\n\nNotes: ${consultationData.notes || 'No additional notes'}` },
-          { name: 'type', value: 'Consultation' }
-        ],
-        link_name_to_fields_array: true,
-        version: '4.1'
+      // Create meeting using API V8 
+      const meetingData = {
+        data: {
+          type: "Meetings",
+          attributes: {
+            name: `Consultation with ${consultationData.name}`,
+            date_start: formatDate(meetingDate),
+            date_end: formatDate(endDate),
+            status: "Planned",
+            description: `Contact Info:\nEmail: ${consultationData.email}\nPhone: ${consultationData.phone}\n\nNotes: ${consultationData.notes || 'No additional notes'}`,
+            type: "Consultation"
+          }
+        }
       };
 
       console.log('[SuiteCRM] Sending meeting creation request');
 
-      const response = await axios.post(
-        this.getApiEndpoint(),
-        {
-          method: 'set_entry',
-          input_type: 'JSON',
-          response_type: 'JSON',
-          rest_data: restData
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          timeout: this.timeout,
-          validateStatus: function (status) {
-            return status < 500;
-          }
-        }
-      );
-
-      console.log('[SuiteCRM] Meeting creation response:', {
-        status: response.status,
-        data: response.data
+      const response = await this.makeRequest('/Api/V8/module', {
+        method: 'POST',
+        data: meetingData
       });
 
-      if (response.status === 200 && response.data?.id) {
+      console.log('[SuiteCRM] Meeting creation response:', response);
+
+      if (response.data?.id) {
         return {
           success: true,
           message: 'Thank you! Your consultation request has been received. Our team will contact you shortly to confirm the details.'
@@ -180,18 +212,6 @@ export class SuiteCRMService {
       }
 
     } catch (error) {
-      // If the error is due to an invalid session, try to login again and retry once
-      if (error instanceof Error && error.message.includes('Invalid Session ID')) {
-        try {
-          console.log('[SuiteCRM] Session expired, attempting to re-login');
-          this.sessionId = null;
-          await this.login();
-          return this.createConsultationMeeting(consultationData);
-        } catch (retryError) {
-          console.error('[SuiteCRM] Retry failed:', retryError instanceof Error ? retryError.message : String(retryError));
-        }
-      }
-
       console.error('[SuiteCRM] Failed to create consultation meeting:', error instanceof Error ? error.message : String(error));
       if (axios.isAxiosError(error)) {
         console.error('[SuiteCRM] Response details:', {
@@ -204,6 +224,93 @@ export class SuiteCRMService {
         success: false,
         message: 'We encountered an issue scheduling your consultation. Please try again later or contact us directly.'
       };
+    }
+  }
+
+  // Create a contact in SuiteCRM
+  async createContact(contactData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    message?: string;
+  }): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      // Create contact using API V8
+      const data = {
+        data: {
+          type: "Contacts",
+          attributes: {
+            first_name: contactData.firstName,
+            last_name: contactData.lastName,
+            email1: contactData.email,
+            phone_work: contactData.phone || '',
+            description: contactData.message || ''
+          }
+        }
+      };
+
+      console.log('[SuiteCRM] Creating contact:', contactData.firstName, contactData.lastName);
+
+      const response = await this.makeRequest('/Api/V8/module', {
+        method: 'POST',
+        data: data
+      });
+
+      if (response.data?.id) {
+        return {
+          success: true,
+          id: response.data.id
+        };
+      } else {
+        throw new Error('Failed to create contact: Invalid response from SuiteCRM');
+      }
+    } catch (error: any) {
+      console.error('[SuiteCRM] Failed to create contact:', error.message);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Get modules from SuiteCRM
+  async getModules(): Promise<any> {
+    try {
+      return await this.makeRequest('/Api/V8/meta/modules');
+    } catch (error) {
+      console.error('[SuiteCRM] Failed to get modules:', error);
+      throw error;
+    }
+  }
+
+  // Get module fields
+  async getModuleFields(moduleName: string): Promise<any> {
+    try {
+      return await this.makeRequest(`/Api/V8/meta/fields/${moduleName}`);
+    } catch (error) {
+      console.error(`[SuiteCRM] Failed to get fields for module ${moduleName}:`, error);
+      throw error;
+    }
+  }
+
+  // Get module records
+  async getModuleRecords(moduleName: string, params: {
+    page?: number;
+    size?: number;
+    filter?: string;
+  } = {}): Promise<any> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append('page[number]', params.page.toString());
+      if (params.size) queryParams.append('page[size]', params.size.toString());
+      if (params.filter) queryParams.append('filter', params.filter);
+      
+      const endpoint = `/Api/V8/module/${moduleName}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      return await this.makeRequest(endpoint);
+    } catch (error) {
+      console.error(`[SuiteCRM] Failed to get records for module ${moduleName}:`, error);
+      throw error;
     }
   }
 }

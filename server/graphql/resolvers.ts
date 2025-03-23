@@ -1,99 +1,10 @@
-import { Resolver, Query, Mutation, Arg } from "type-graphql";
-import axios from "axios";
-import { SuiteCRMConnection } from "./types";
-
-const SUITECRM_URL = process.env.SUITECRM_URL;
-const CLIENT_ID = process.env.SUITECRM_CLIENT_ID;
-const CLIENT_SECRET = process.env.SUITECRM_CLIENT_SECRET;
-
-if (!SUITECRM_URL || !CLIENT_ID || !CLIENT_SECRET) {
-  console.error('Missing required SuiteCRM environment variables');
-}
+import { Resolver, Query, Mutation, Arg, ObjectType, Field } from "type-graphql";
+import { SuiteCRMConnection, ModuleData, ModuleRecord, ModuleField } from "./types";
+import { suiteCRMService } from "../services/suitecrm";
+import { GraphQLJSON } from 'graphql-type-json';
 
 @Resolver()
 export class SuiteCRMResolver {
-  private accessToken: string | null = null;
-  private tokenExpiry: number | null = null;
-  private refreshPromise: Promise<string> | null = null;
-
-  private async getValidToken(): Promise<string> {
-    // If there's already a refresh in progress, wait for it
-    if (this.refreshPromise) {
-      return this.refreshPromise;
-    }
-
-    // If token is still valid, return it
-    if (this.accessToken && this.tokenExpiry && Date.now() < (this.tokenExpiry - 300000)) {
-      return this.accessToken;
-    }
-
-    // Start a new refresh
-    this.refreshPromise = this.refreshToken();
-    try {
-      return await this.refreshPromise;
-    } finally {
-      this.refreshPromise = null;
-    }
-  }
-
-  private async refreshToken(): Promise<string> {
-    if (!CLIENT_ID || !CLIENT_SECRET) {
-      throw new Error('SuiteCRM client credentials not configured');
-    }
-
-    try {
-      console.log('Refreshing SuiteCRM OAuth token...');
-      const response = await axios.post(`${SUITECRM_URL}/Api/V8/oauth2/token`, {
-        grant_type: 'client_credentials',
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/vnd.api+json'
-        }
-      });
-
-      if (!response.data.access_token) {
-        throw new Error('No access token received');
-      }
-
-      this.accessToken = response.data.access_token;
-      this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
-      console.log('Successfully refreshed OAuth token');
-      return this.accessToken;
-    } catch (error: any) {
-      console.error('Failed to obtain OAuth token:', error.message);
-      this.accessToken = null;
-      this.tokenExpiry = null;
-      throw new Error(`Authentication failed: ${error.message}`);
-    }
-  }
-
-  private async makeRequest(endpoint: string, options: any = {}) {
-    try {
-      const token = await this.getValidToken();
-      const response = await axios({
-        ...options,
-        url: `${SUITECRM_URL}${endpoint}`,
-        headers: {
-          ...options.headers,
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.api+json',
-          'Content-Type': 'application/json'
-        }
-      });
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        // Clear token on unauthorized to force a refresh on next attempt
-        this.accessToken = null;
-        this.tokenExpiry = null;
-      }
-      console.error(`API Request failed for ${endpoint}:`, error.message);
-      throw new Error(`API request failed: ${error.message}`);
-    }
-  }
 
   @Query(() => SuiteCRMConnection)
   async testSuiteCRMConnection(): Promise<SuiteCRMConnection> {
@@ -102,8 +13,12 @@ export class SuiteCRMResolver {
         name: 'V8 OAuth Endpoint',
         test: async () => {
           try {
-            await this.getValidToken();
-            return { success: true, message: 'OAuth token obtained successfully' };
+            // This will internally call getValidToken which handles the OAuth process
+            const testResult = await suiteCRMService.testConnection();
+            return { 
+              success: testResult, 
+              message: testResult ? 'OAuth token obtained successfully' : 'Failed to obtain OAuth token' 
+            };
           } catch (error: any) {
             return { success: false, message: error.message };
           }
@@ -113,7 +28,7 @@ export class SuiteCRMResolver {
         name: 'V8 Modules Endpoint',
         test: async () => {
           try {
-            await this.makeRequest('/Api/V8/meta/modules');
+            await suiteCRMService.getModules();
             return { success: true, message: 'Modules endpoint accessible' };
           } catch (error: any) {
             return { success: false, message: error.message };
@@ -124,8 +39,11 @@ export class SuiteCRMResolver {
         name: 'V8 Meta Now Endpoint',
         test: async () => {
           try {
-            await this.makeRequest('/Api/V8/meta/now');
-            return { success: true, message: 'Server time endpoint accessible' };
+            const testResult = await suiteCRMService.testConnection();
+            return { 
+              success: testResult, 
+              message: testResult ? 'Server time endpoint accessible' : 'Failed to access server time endpoint' 
+            };
           } catch (error: any) {
             return { success: false, message: error.message };
           }
@@ -134,7 +52,7 @@ export class SuiteCRMResolver {
     ];
 
     try {
-      console.log('Testing SuiteCRM connection with URL:', SUITECRM_URL);
+      console.log('Testing SuiteCRM connection');
 
       const results = await Promise.all(
         endpoints.map(async (endpoint) => {
@@ -166,6 +84,114 @@ export class SuiteCRMResolver {
         error.message,
         []
       );
+    }
+  }
+
+  @Query(() => ModuleData)
+  async getSuiteCRMModules(): Promise<ModuleData> {
+    try {
+      const modulesData = await suiteCRMService.getModules();
+      return {
+        success: true,
+        data: modulesData
+      };
+    } catch (error: any) {
+      console.error('Failed to get SuiteCRM modules:', error.message);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  @Query(() => ModuleField)
+  async getSuiteCRMModuleFields(@Arg("moduleName") moduleName: string): Promise<ModuleField> {
+    try {
+      const fieldsData = await suiteCRMService.getModuleFields(moduleName);
+      return {
+        success: true,
+        moduleName,
+        data: fieldsData
+      };
+    } catch (error: any) {
+      console.error(`Failed to get fields for module ${moduleName}:`, error.message);
+      return {
+        success: false,
+        moduleName,
+        error: error.message
+      };
+    }
+  }
+
+  @Query(() => ModuleRecord)
+  async getSuiteCRMModuleRecords(
+    @Arg("moduleName") moduleName: string,
+    @Arg("page", { nullable: true }) page?: number,
+    @Arg("size", { nullable: true }) size?: number,
+    @Arg("filter", { nullable: true }) filter?: string
+  ): Promise<ModuleRecord> {
+    try {
+      const recordsData = await suiteCRMService.getModuleRecords(moduleName, { page, size, filter });
+      return {
+        success: true,
+        moduleName,
+        data: recordsData
+      };
+    } catch (error: any) {
+      console.error(`Failed to get records for module ${moduleName}:`, error.message);
+      return {
+        success: false,
+        moduleName,
+        error: error.message
+      };
+    }
+  }
+
+  @Mutation(() => Boolean)
+  async createSuiteCRMContact(
+    @Arg("firstName") firstName: string,
+    @Arg("lastName") lastName: string,
+    @Arg("email") email: string,
+    @Arg("phone", { nullable: true }) phone?: string,
+    @Arg("message", { nullable: true }) message?: string
+  ): Promise<boolean> {
+    try {
+      const result = await suiteCRMService.createContact({
+        firstName,
+        lastName,
+        email,
+        phone,
+        message
+      });
+      return result.success;
+    } catch (error) {
+      console.error('Failed to create contact via GraphQL:', error);
+      return false;
+    }
+  }
+
+  @Mutation(() => Boolean)
+  async createSuiteCRMConsultation(
+    @Arg("name") name: string,
+    @Arg("email") email: string,
+    @Arg("phone") phone: string,
+    @Arg("notes", { nullable: true }) notes?: string,
+    @Arg("preferredDate", { nullable: true }) preferredDate?: string,
+    @Arg("preferredTime", { nullable: true }) preferredTime?: string
+  ): Promise<boolean> {
+    try {
+      const result = await suiteCRMService.createConsultationMeeting({
+        name,
+        email,
+        phone,
+        notes,
+        preferredDate,
+        preferredTime
+      });
+      return result.success;
+    } catch (error) {
+      console.error('Failed to create consultation via GraphQL:', error);
+      return false;
     }
   }
 }

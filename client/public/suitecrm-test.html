@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuiteCRM API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 5px;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            overflow: auto;
+            min-height: 50px;
+        }
+        .success {
+            border-left: 4px solid #2ecc71;
+        }
+        .error {
+            border-left: 4px solid #e74c3c;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        textarea {
+            min-height: 80px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .hidden {
+            display: none;
+        }
+        pre {
+            background: #272822;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SuiteCRM API Test</h1>
+        
+        <div class="card">
+            <h2>Connection Test</h2>
+            <p>Test the connection to SuiteCRM via GraphQL:</p>
+            <button id="testConnectionBtn" class="btn">Test Connection</button>
+            <div id="connectionResult" class="result">
+                <div>Results will appear here</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Modules List</h2>
+            <p>Get a list of available modules in SuiteCRM:</p>
+            <button id="getModulesBtn" class="btn">Get Modules</button>
+            <div id="modulesResult" class="result">
+                <div>Results will appear here</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Module Fields</h2>
+            <div class="form-group">
+                <label for="moduleNameForFields">Module Name:</label>
+                <input type="text" id="moduleNameForFields" placeholder="E.g., Contacts, Accounts, Meetings">
+            </div>
+            <button id="getFieldsBtn" class="btn">Get Fields</button>
+            <div id="fieldsResult" class="result">
+                <div>Results will appear here</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Module Records</h2>
+            <div class="form-group">
+                <label for="moduleNameForRecords">Module Name:</label>
+                <input type="text" id="moduleNameForRecords" placeholder="E.g., Contacts, Accounts, Meetings">
+            </div>
+            <div class="form-group">
+                <label for="pageNumber">Page Number (optional):</label>
+                <input type="number" id="pageNumber" placeholder="1">
+            </div>
+            <div class="form-group">
+                <label for="pageSize">Page Size (optional):</label>
+                <input type="number" id="pageSize" placeholder="10">
+            </div>
+            <button id="getRecordsBtn" class="btn">Get Records</button>
+            <div id="recordsResult" class="result">
+                <div>Results will appear here</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Create Contact</h2>
+            <div class="form-group">
+                <label for="firstName">First Name:</label>
+                <input type="text" id="firstName" placeholder="John">
+            </div>
+            <div class="form-group">
+                <label for="lastName">Last Name:</label>
+                <input type="text" id="lastName" placeholder="Doe">
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" placeholder="john.doe@example.com">
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone:</label>
+                <input type="text" id="phone" placeholder="123-456-7890">
+            </div>
+            <div class="form-group">
+                <label for="message">Message:</label>
+                <textarea id="message" placeholder="Enter additional message or notes here..."></textarea>
+            </div>
+            <button id="createContactBtn" class="btn">Create Contact</button>
+            <div id="createContactResult" class="result">
+                <div>Results will appear here</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Create Consultation Meeting</h2>
+            <div class="form-group">
+                <label for="consultName">Full Name:</label>
+                <input type="text" id="consultName" placeholder="John Doe">
+            </div>
+            <div class="form-group">
+                <label for="consultEmail">Email:</label>
+                <input type="email" id="consultEmail" placeholder="john.doe@example.com">
+            </div>
+            <div class="form-group">
+                <label for="consultPhone">Phone:</label>
+                <input type="text" id="consultPhone" placeholder="123-456-7890">
+            </div>
+            <div class="form-group">
+                <label for="consultNotes">Notes:</label>
+                <textarea id="consultNotes" placeholder="Enter any consultation notes here..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="consultDate">Preferred Date:</label>
+                <input type="date" id="consultDate">
+            </div>
+            <div class="form-group">
+                <label for="consultTime">Preferred Time:</label>
+                <input type="time" id="consultTime">
+            </div>
+            <button id="createConsultationBtn" class="btn">Create Consultation</button>
+            <div id="createConsultationResult" class="result">
+                <div>Results will appear here</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Utility function to format JSON response
+        function formatJSON(json) {
+            try {
+                return JSON.stringify(json, null, 2);
+            } catch (e) {
+                return String(json);
+            }
+        }
+
+        // Update result area with API response
+        function updateResult(elementId, data, success = true) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<pre>${formatJSON(data)}</pre>`;
+            element.className = `result ${success ? 'success' : 'error'}`;
+        }
+
+        // Call GraphQL API with the provided query or mutation
+        async function callGraphQL(query, variables = {}) {
+            try {
+                const response = await fetch('/graphql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query,
+                        variables
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('GraphQL API error:', error);
+                throw error;
+            }
+        }
+
+        // Call REST API endpoint
+        async function callApi(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                };
+
+                if (data && (method === 'POST' || method === 'PUT')) {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(`/api/${endpoint}`, options);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('API error:', error);
+                throw error;
+            }
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Test Connection
+            document.getElementById('testConnectionBtn').addEventListener('click', async () => {
+                try {
+                    const query = `
+                        query TestConnection {
+                            testSuiteCRMConnection {
+                                success
+                                message
+                                endpoints {
+                                    name
+                                    status
+                                    statusText
+                                    error
+                                    data
+                                }
+                            }
+                        }
+                    `;
+                    
+                    const result = await callGraphQL(query);
+                    
+                    if (result.errors) {
+                        updateResult('connectionResult', { errors: result.errors }, false);
+                        return;
+                    }
+                    
+                    updateResult(
+                        'connectionResult', 
+                        result.data.testSuiteCRMConnection, 
+                        result.data.testSuiteCRMConnection.success
+                    );
+                } catch (err) {
+                    console.error('SuiteCRM test error:', err);
+                    updateResult('connectionResult', { error: err.message }, false);
+                }
+            });
+
+            // Get Modules
+            document.getElementById('getModulesBtn').addEventListener('click', async () => {
+                try {
+                    const query = `
+                        query GetModules {
+                            getSuiteCRMModules {
+                                success
+                                error
+                                data
+                            }
+                        }
+                    `;
+                    
+                    const result = await callGraphQL(query);
+                    
+                    if (result.errors) {
+                        updateResult('modulesResult', { errors: result.errors }, false);
+                        return;
+                    }
+                    
+                    updateResult(
+                        'modulesResult',
+
+                        result.data.getSuiteCRMModules, 
+                        result.data.getSuiteCRMModules.success
+                    );
+                } catch (err) {
+                    console.error('Get modules error:', err);
+                    updateResult('modulesResult', { error: err.message }, false);
+                }
+            });
+
+            // Get Module Fields
+            document.getElementById('getFieldsBtn').addEventListener('click', async () => {
+                try {
+                    const moduleName = document.getElementById('moduleNameForFields').value.trim();
+                    
+                    if (!moduleName) {
+                        updateResult('fieldsResult', { error: "Please enter a module name" }, false);
+                        return;
+                    }
+                    
+                    const query = `
+                        query GetModuleFields($moduleName: String!) {
+                            getSuiteCRMModuleFields(moduleName: $moduleName) {
+                                success
+                                moduleName
+                                error
+                                data
+                            }
+                        }
+                    `;
+                    
+                    const result = await callGraphQL(query, { moduleName });
+                    
+                    if (result.errors) {
+                        updateResult('fieldsResult', { errors: result.errors }, false);
+                        return;
+                    }
+                    
+                    updateResult(
+                        'fieldsResult', 
+                        result.data.getSuiteCRMModuleFields, 
+                        result.data.getSuiteCRMModuleFields.success
+                    );
+                } catch (err) {
+                    console.error('Get fields error:', err);
+                    updateResult('fieldsResult', { error: err.message }, false);
+                }
+            });
+
+            // Get Module Records
+            document.getElementById('getRecordsBtn').addEventListener('click', async () => {
+                try {
+                    const moduleName = document.getElementById('moduleNameForRecords').value.trim();
+                    const page = document.getElementById('pageNumber').value.trim();
+                    const size = document.getElementById('pageSize').value.trim();
+                    
+                    if (!moduleName) {
+                        updateResult('recordsResult', { error: "Please enter a module name" }, false);
+                        return;
+                    }
+                    
+                    const variables = { moduleName };
+                    if (page) variables.page = parseInt(page);
+                    if (size) variables.size = parseInt(size);
+                    
+                    const query = `
+                        query GetModuleRecords($moduleName: String!, $page: Float, $size: Float) {
+                            getSuiteCRMModuleRecords(moduleName: $moduleName, page: $page, size: $size) {
+                                success
+                                moduleName
+                                error
+                                data
+                            }
+                        }
+                    `;
+                    
+                    const result = await callGraphQL(query, variables);
+                    
+                    if (result.errors) {
+                        updateResult('recordsResult', { errors: result.errors }, false);
+                        return;
+                    }
+                    
+                    updateResult(
+                        'recordsResult', 
+                        result.data.getSuiteCRMModuleRecords, 
+                        result.data.getSuiteCRMModuleRecords.success
+                    );
+                } catch (err) {
+                    console.error('Get records error:', err);
+                    updateResult('recordsResult', { error: err.message }, false);
+                }
+            });
+
+            // Create Contact
+            document.getElementById('createContactBtn').addEventListener('click', async () => {
+                try {
+                    const firstName = document.getElementById('firstName').value.trim();
+                    const lastName = document.getElementById('lastName').value.trim();
+                    const email = document.getElementById('email').value.trim();
+                    const phone = document.getElementById('phone').value.trim();
+                    const message = document.getElementById('message').value.trim();
+                    
+                    if (!firstName || !lastName || !email) {
+                        updateResult('createContactResult', { error: "First name, last name, and email are required" }, false);
+                        return;
+                    }
+                    
+                    const mutation = `
+                        mutation CreateContact($firstName: String!, $lastName: String!, $email: String!, $phone: String, $message: String) {
+                            createSuiteCRMContact(
+                                firstName: $firstName, 
+                                lastName: $lastName, 
+                                email: $email,
+                                phone: $phone,
+                                message: $message
+                            )
+                        }
+                    `;
+                    
+                    const variables = { firstName, lastName, email };
+                    if (phone) variables.phone = phone;
+                    if (message) variables.message = message;
+                    
+                    const result = await callGraphQL(mutation, variables);
+                    
+                    if (result.errors) {
+                        updateResult('createContactResult', { errors: result.errors }, false);
+                        return;
+                    }
+                    
+                    updateResult(
+                        'createContactResult', 
+                        { 
+                            success: result.data.createSuiteCRMContact,
+                            message: result.data.createSuiteCRMContact ? 
+                                "Contact created successfully" : 
+                                "Failed to create contact"
+                        }, 
+                        result.data.createSuiteCRMContact
+                    );
+                } catch (err) {
+                    console.error('Create contact error:', err);
+                    updateResult('createContactResult', { error: err.message }, false);
+                }
+            });
+
+            // Create Consultation
+            document.getElementById('createConsultationBtn').addEventListener('click', async () => {
+                try {
+                    const name = document.getElementById('consultName').value.trim();
+                    const email = document.getElementById('consultEmail').value.trim();
+                    const phone = document.getElementById('consultPhone').value.trim();
+                    const notes = document.getElementById('consultNotes').value.trim();
+                    const preferredDate = document.getElementById('consultDate').value.trim();
+                    const preferredTime = document.getElementById('consultTime').value.trim();
+                    
+                    if (!name || !email || !phone) {
+                        updateResult('createConsultationResult', { error: "Name, email, and phone are required" }, false);
+                        return;
+                    }
+                    
+                    const mutation = `
+                        mutation CreateConsultation(
+                            $name: String!, 
+                            $email: String!, 
+                            $phone: String!, 
+                            $notes: String, 
+                            $preferredDate: String, 
+                            $preferredTime: String
+                        ) {
+                            createSuiteCRMConsultation(
+                                name: $name, 
+                                email: $email, 
+                                phone: $phone,
+                                notes: $notes,
+                                preferredDate: $preferredDate,
+                                preferredTime: $preferredTime
+                            )
+                        }
+                    `;
+                    
+                    const variables = { name, email, phone };
+                    if (notes) variables.notes = notes;
+                    if (preferredDate) variables.preferredDate = preferredDate;
+                    if (preferredTime) variables.preferredTime = preferredTime;
+                    
+                    const result = await callGraphQL(mutation, variables);
+                    
+                    if (result.errors) {
+                        updateResult('createConsultationResult', { errors: result.errors }, false);
+                        return;
+                    }
+                    
+                    updateResult(
+                        'createConsultationResult', 
+                        { 
+                            success: result.data.createSuiteCRMConsultation,
+                            message: result.data.createSuiteCRMConsultation ? 
+                                "Consultation created successfully" : 
+                                "Failed to create consultation"
+                        }, 
+                        result.data.createSuiteCRMConsultation
+                    );
+                } catch (err) {
+                    console.error('Create consultation error:', err);
+                    updateResult('createConsultationResult', { error: err.message }, false);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
