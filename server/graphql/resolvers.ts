@@ -105,7 +105,7 @@ export class SuiteCRMResolver {
   }
 
   @Query(() => ModuleField)
-  async getSuiteCRMModuleFields(@Arg("moduleName") moduleName: string): Promise<ModuleField> {
+  async getSuiteCRMModuleFields(@Arg("moduleName", () => String) moduleName: string): Promise<ModuleField> {
     try {
       const fieldsData = await suiteCRMService.getModuleFields(moduleName);
       return {
@@ -125,10 +125,10 @@ export class SuiteCRMResolver {
 
   @Query(() => ModuleRecord)
   async getSuiteCRMModuleRecords(
-    @Arg("moduleName") moduleName: string,
-    @Arg("page", { nullable: true }) page?: number,
-    @Arg("size", { nullable: true }) size?: number,
-    @Arg("filter", { nullable: true }) filter?: string
+    @Arg("moduleName", () => String) moduleName: string,
+    @Arg("page", () => Number, { nullable: true }) page?: number,
+    @Arg("size", () => Number, { nullable: true }) size?: number,
+    @Arg("filter", () => String, { nullable: true }) filter?: string
   ): Promise<ModuleRecord> {
     try {
       const recordsData = await suiteCRMService.getModuleRecords(moduleName, { page, size, filter });
@@ -149,11 +149,11 @@ export class SuiteCRMResolver {
 
   @Mutation(() => Boolean)
   async createSuiteCRMContact(
-    @Arg("firstName") firstName: string,
-    @Arg("lastName") lastName: string,
-    @Arg("email") email: string,
-    @Arg("phone", { nullable: true }) phone?: string,
-    @Arg("message", { nullable: true }) message?: string
+    @Arg("firstName", () => String) firstName: string,
+    @Arg("lastName", () => String) lastName: string,
+    @Arg("email", () => String) email: string,
+    @Arg("phone", () => String, { nullable: true }) phone?: string,
+    @Arg("message", () => String, { nullable: true }) message?: string
   ): Promise<boolean> {
     try {
       const result = await suiteCRMService.createContact({
@@ -172,12 +172,12 @@ export class SuiteCRMResolver {
 
   @Mutation(() => Boolean)
   async createSuiteCRMConsultation(
-    @Arg("name") name: string,
-    @Arg("email") email: string,
-    @Arg("phone") phone: string,
-    @Arg("notes", { nullable: true }) notes?: string,
-    @Arg("preferredDate", { nullable: true }) preferredDate?: string,
-    @Arg("preferredTime", { nullable: true }) preferredTime?: string
+    @Arg("name", () => String) name: string,
+    @Arg("email", () => String) email: string,
+    @Arg("phone", () => String) phone: string,
+    @Arg("notes", () => String, { nullable: true }) notes?: string,
+    @Arg("preferredDate", () => String, { nullable: true }) preferredDate?: string,
+    @Arg("preferredTime", () => String, { nullable: true }) preferredTime?: string
   ): Promise<boolean> {
     try {
       const result = await suiteCRMService.createConsultationMeeting({
