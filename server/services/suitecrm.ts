@@ -243,13 +243,8 @@ export class SuiteCRMService {
       // Format the date and time for the meeting
       let meetingDate = new Date();
       
-      // Always set to March 26, 2025 for the test case if we're creating from the test interface
-      if (consultationData.preferredDate === '2025-03-26') {
-        console.log('[SuiteCRM] Using March 26, 2025 for meeting date');
-        // Ensure we use a specific time for the meeting on March 26
-        meetingDate = new Date('2025-03-26T11:00:00.000Z');
-      } else if (consultationData.preferredDate) {
-        // Regular case
+      // Process preferred date if provided
+      if (consultationData.preferredDate) {
         console.log(`[SuiteCRM] Using preferred date: ${consultationData.preferredDate}`);
         meetingDate = new Date(consultationData.preferredDate);
       }
@@ -258,97 +253,48 @@ export class SuiteCRMService {
       if (consultationData.preferredTime) {
         const [hours, minutes] = consultationData.preferredTime.split(':');
         meetingDate.setHours(parseInt(hours), parseInt(minutes));
-        console.log(`[SuiteCRM] Setting meeting time to: ${hours}:${minutes}`);
+        console.log(`[SuiteCRM] Setting meeting time to: ${consultationData.preferredTime}`);
       }
 
       // End date is 1 hour after start
       const endDate = new Date(meetingDate);
       endDate.setHours(endDate.getHours() + 1);
 
-      // Format dates for SuiteCRM in multiple formats to ensure compatibility
-      const formatDate = (date: Date) => {
-        // For testing, we'll log all formats we're generating
-        const isoFormat = date.toISOString();
-        const ymdFormat = isoFormat.split('T')[0];
-        const formattedDateTime = isoFormat.replace('T', ' ').split('.')[0];
-        
-        console.log(`[SuiteCRM] Date formats - ISO: ${isoFormat}, YMD: ${ymdFormat}, Formatted: ${formattedDateTime}`);
-        
-        // Use ISO format for the API per documentation
-        return isoFormat;
-      };
-      
-      console.log(`[SuiteCRM] Meeting start time: ${formatDate(meetingDate)}`);
-      console.log(`[SuiteCRM] Meeting end time: ${formatDate(endDate)}`);
+      console.log(`[SuiteCRM] Meeting start time: ${meetingDate.toISOString()}`);
+      console.log(`[SuiteCRM] Meeting end time: ${endDate.toISOString()}`);
 
       // Create a unique name for the meeting to help with identification
-      const meetingName = `Consultation with ${consultationData.name} - ${new Date().toISOString().substring(0, 19).replace('T', ' ')}`;
+      const meetingName = `Consultation with ${consultationData.name}`;
 
-      // Create meeting using API V8 - Format according to JsonAPI spec and test script example
+      // Create the meeting payload using the format that works (based on our testing)
+      // Format 1: JSON:API format with ISO dates on the /legacy/Api/V8/module endpoint
       const meetingData = {
         data: {
           type: "Meetings",
           attributes: {
             name: meetingName,
-            date_start: meetingDate.toISOString().replace('T', ' ').split('.')[0],
-            date_end: endDate.toISOString().replace('T', ' ').split('.')[0],
+            date_start: meetingDate.toISOString(),
+            date_end: endDate.toISOString(),
             status: "Planned",
             description: `Contact Info:\nEmail: ${consultationData.email}\nPhone: ${consultationData.phone}\n\nNotes: ${consultationData.notes || 'No additional notes'}`,
             duration_hours: 1,
             duration_minutes: 0,
             assigned_user_id: "1", // Admin user
-            // Required meeting fields based on SuiteCRM documentation
-            location: "Video call",
-            reminder_time: 60,
-            email_reminder_time: 60,
-            parent_type: "Contacts",
-            // Standard date formats
-            date: meetingDate.toISOString().split('T')[0],
-            // Contact details
-            contact_name: consultationData.name,
-            contact_email: consultationData.email,
-            contact_phone: consultationData.phone
+            location: "Video call"
           }
         }
       };
 
       console.log('[SuiteCRM] Sending meeting creation payload:', JSON.stringify(meetingData));
 
-      // Try multiple endpoint formats based on SuiteCRM documentation
-      let response;
-      const endpoints = [
-        // New attempt with proper create format based on JsonAPI
-        '/legacy/Api/V8/module',
-        // Try alternate format suggested in test_api.sh
-        '/legacy/Api/V8/module?_method=POST',
-        // Try module-specific endpoints
-        '/legacy/Api/V8/module/Meetings?_method=POST',
-        '/legacy/Api/V8/modules/Meetings'
-      ];
+      // Use the endpoint that we know works from our testing
+      const endpoint = '/legacy/Api/V8/module';
+      console.log(`[SuiteCRM] Using endpoint: ${endpoint}`);
       
-      let lastError;
-      
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`[SuiteCRM] Trying ${endpoint} endpoint`);
-          response = await this.makeRequest(endpoint, {
-            method: 'POST',
-            data: meetingData
-          });
-          // If we get here, it succeeded
-          console.log(`[SuiteCRM] Successfully used endpoint: ${endpoint}`);
-          break;
-        } catch (error) {
-          console.log(`[SuiteCRM] Endpoint ${endpoint} failed`);
-          lastError = error;
-          // Continue to next endpoint
-        }
-      }
-      
-      // If we tried all endpoints and all failed, throw the last error
-      if (!response && lastError) {
-        throw lastError;
-      }
+      const response = await this.makeRequest(endpoint, {
+        method: 'POST',
+        data: meetingData
+      });
 
       console.log('[SuiteCRM] Meeting creation response:', JSON.stringify(response));
       
@@ -356,34 +302,12 @@ export class SuiteCRMService {
       let meetingId = '';
       if (response.data?.id) {
         meetingId = response.data.id;
+        console.log(`[SuiteCRM] Created meeting with ID: ${meetingId}`);
       }
 
       // Check if we have a valid response
       if (response.data?.id || (response.data && typeof response.data === 'object')) {
         console.log('[SuiteCRM] Successfully created meeting in SuiteCRM');
-        
-        // Immediately try to fetch meetings for March 26, 2025 to confirm
-        if (consultationData.preferredDate === '2025-03-26') {
-          try {
-            const startDate = new Date('2025-03-26T00:00:00.000Z');
-            const endDate = new Date('2025-03-26T23:59:59.999Z');
-            const meetings = await this.getMeetingsForDateRange(startDate.toISOString(), endDate.toISOString());
-            console.log(`[SuiteCRM] Verified meetings for March 26, 2025: Found ${meetings.length} meetings`);
-            
-            // If the meeting we just created isn't in the results, try to fetch it directly
-            if (meetings.length === 0 && meetingId) {
-              console.log(`[SuiteCRM] Trying to fetch the created meeting directly by ID: ${meetingId}`);
-              try {
-                const singleMeeting = await this.makeRequest(`/legacy/Api/V8/module/Meetings/${meetingId}`);
-                console.log('[SuiteCRM] Direct meeting fetch result:', JSON.stringify(singleMeeting));
-              } catch (directFetchError) {
-                console.error('[SuiteCRM] Failed to fetch meeting directly:', directFetchError);
-              }
-            }
-          } catch (verifyError) {
-            console.error('[SuiteCRM] Failed to verify meetings:', verifyError);
-          }
-        }
         
         return {
           success: true,

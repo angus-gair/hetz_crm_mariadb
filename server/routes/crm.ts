@@ -37,19 +37,43 @@ router.get('/get-token', async (_req: Request, res: Response) => {
 router.post('/test-meeting-create', async (req: Request, res: Response) => {
   try {
     const { name, email, phone, notes, preferredDate, preferredTime } = req.body;
+    const fs = require('fs');
+    const testLogFile = './test_meeting_api.log';
+    
+    // Helper function to write logs
+    const logTest = (message: string) => {
+      const timestamp = new Date().toISOString();
+      const logMessage = `${timestamp} - ${message}\n`;
+      console.log(logMessage.trim());
+      try {
+        fs.appendFileSync(testLogFile, logMessage);
+      } catch (err) {
+        console.error('Error writing to log file:', err);
+      }
+    };
+    
+    // Clear previous log file 
+    try {
+      fs.writeFileSync(testLogFile, `=== SuiteCRM Meeting Test Log - ${new Date().toISOString()} ===\n\n`);
+      logTest('Starting new test session');
+    } catch (err) {
+      console.error('Error initializing log file:', err);
+    }
     
     if (!name || !email || !phone) {
+      logTest('Missing required fields: name, email, or phone');
       return res.status(400).json({
-        success: false,
+        success: false, 
         message: 'Name, email, and phone are required fields'
       });
     }
     
-    console.log('[TEST] Starting meeting creation test');
+    logTest('Starting meeting creation test');
+    logTest(`Request data: ${JSON.stringify(req.body)}`);
     
     // Get a fresh token directly
     const token = await (suiteCRMService as any).getValidToken();
-    console.log('[TEST] Got token:', token.slice(0, 10) + '...');
+    logTest(`Got authentication token: ${token.slice(0, 15)}...${token.slice(-5)}`);
     
     // Set up meeting date/time
     let meetingDate = new Date();
@@ -65,12 +89,12 @@ router.post('/test-meeting-create', async (req: Request, res: Response) => {
     const endDate = new Date(meetingDate);
     endDate.setHours(endDate.getHours() + 1);
     
-    console.log(`[TEST] Meeting date: ${meetingDate.toISOString()}`);
-    console.log(`[TEST] End date: ${endDate.toISOString()}`);
+    logTest(`Meeting date: ${meetingDate.toISOString()}`);
+    logTest(`End date: ${endDate.toISOString()}`);
     
     // Get SuiteCRM base URL
     const baseUrl = (suiteCRMService as any).baseUrl;
-    console.log(`[TEST] Using base URL: ${baseUrl}`);
+    logTest(`Using SuiteCRM base URL: ${baseUrl}`);
     
     // Try different payload formats
     const payloads = [
@@ -116,6 +140,26 @@ router.post('/test-meeting-create', async (req: Request, res: Response) => {
         description: `Contact Info:\nEmail: ${email}\nPhone: ${phone}\n\nNotes: ${notes || 'No additional notes'}`,
         duration_hours: 1,
         duration_minutes: 0
+      },
+      
+      // Format 4: Test with special parameters
+      {
+        data: {
+          type: "Meetings",
+          attributes: {
+            name: `Consultation with ${name}`,
+            date_start: meetingDate.toISOString(),
+            date_end: endDate.toISOString(),
+            status: "Planned",
+            description: `Contact Info:\nEmail: ${email}\nPhone: ${phone}\n\nNotes: ${notes || 'No additional notes'}`,
+            duration_hours: 1,
+            duration_minutes: 0,
+            contact_name: name,
+            contact_email: email,
+            contact_phone: phone,
+            parent_type: "Contacts"
+          }
+        }
       }
     ];
     
@@ -123,6 +167,7 @@ router.post('/test-meeting-create', async (req: Request, res: Response) => {
     const endpoints = [
       '/Api/V8/module',
       '/legacy/Api/V8/module',
+      '/legacy/Api/V8/module?type=Meetings',
       '/Api/V8/module/Meetings',
       '/legacy/Api/V8/module/Meetings',
       '/rest/v10/Meetings',
@@ -135,10 +180,13 @@ router.post('/test-meeting-create', async (req: Request, res: Response) => {
     for (const endpoint of endpoints) {
       for (const [index, payload] of payloads.entries()) {
         const fullUrl = `${baseUrl}${endpoint}`;
-        console.log(`[TEST] Trying endpoint: ${fullUrl} with payload format ${index + 1}`);
-        console.log(`[TEST] Payload: ${JSON.stringify(payload)}`);
+        logTest(`----------------- TEST COMBINATION ${results.length + 1} -----------------`);
+        logTest(`ENDPOINT: ${fullUrl}`);
+        logTest(`PAYLOAD FORMAT: ${index + 1}`);
+        logTest(`PAYLOAD: ${JSON.stringify(payload, null, 2)}`);
         
         try {
+          logTest('Sending request...');
           const response = await axios({
             method: 'post',
             url: fullUrl,
@@ -148,11 +196,11 @@ router.post('/test-meeting-create', async (req: Request, res: Response) => {
               'Content-Type': 'application/json',
               'Accept': 'application/json'
             },
-            timeout: 10000 // 10 second timeout
+            timeout: 15000 // 15 second timeout
           });
           
-          console.log(`[TEST] Success! Response status: ${response.status}`);
-          console.log(`[TEST] Response data: ${JSON.stringify(response.data)}`);
+          logTest(`SUCCESS! Response status: ${response.status}`);
+          logTest(`Response data: ${JSON.stringify(response.data, null, 2)}`);
           
           results.push({
             success: true,
@@ -162,10 +210,21 @@ router.post('/test-meeting-create', async (req: Request, res: Response) => {
             status: response.status
           });
           
+          // Save the first working combination for immediate use in the service
+          if (results.filter(r => r.success).length === 1) {
+            logTest(`FOUND WORKING COMBINATION: Endpoint=${endpoint}, Format=${index + 1}`);
+            fs.writeFileSync('./working_meeting_api.json', JSON.stringify({
+              endpoint,
+              payloadFormat: index + 1,
+              payload,
+              response: response.data
+            }, null, 2));
+          }
+          
         } catch (error: any) {
-          console.log(`[TEST] Error! Status: ${error.response?.status || 'unknown'}`);
-          console.log(`[TEST] Error message: ${error.message}`);
-          console.log(`[TEST] Response data: ${JSON.stringify(error.response?.data || {})}`);
+          logTest(`ERROR! Status: ${error.response?.status || 'unknown'}`);
+          logTest(`Error message: ${error.message}`);
+          logTest(`Response data: ${JSON.stringify(error.response?.data || {}, null, 2)}`);
           
           results.push({
             success: false,
@@ -176,19 +235,39 @@ router.post('/test-meeting-create', async (req: Request, res: Response) => {
             responseData: error.response?.data || {}
           });
         }
+        
+        logTest('------------- END TEST COMBINATION -------------\n');
       }
     }
     
-    // Return all results for analysis
-    return res.json({
-      success: results.some(r => r.success),
+    // Generate summary
+    const successfulCombinations = results.filter(r => r.success);
+    const summary = {
+      totalAttempts: results.length,
+      successfulAttempts: successfulCombinations.length,
+      workingEndpoints: successfulCombinations.map(r => r.endpoint).filter((v, i, a) => a.indexOf(v) === i),
+      workingFormats: successfulCombinations.map(r => r.payloadFormat).filter((v, i, a) => a.indexOf(v) === i),
+      bestEndpoint: successfulCombinations.length > 0 ? successfulCombinations[0].endpoint : 'None found',
+      bestFormat: successfulCombinations.length > 0 ? successfulCombinations[0].payloadFormat : 'None found'
+    };
+    
+    logTest(`SUMMARY: ${JSON.stringify(summary, null, 2)}`);
+    logTest('TEST COMPLETE');
+    
+    // Save full results to a file
+    fs.writeFileSync('./test_meeting_results.json', JSON.stringify({
+      success: successfulCombinations.length > 0,
       results,
-      summary: {
-        totalAttempts: results.length,
-        successfulAttempts: results.filter(r => r.success).length,
-        bestEndpoint: results.find(r => r.success)?.endpoint || 'None found',
-        bestFormat: results.find(r => r.success)?.payloadFormat || 'None found'
-      }
+      summary
+    }, null, 2));
+    
+    // Return results
+    return res.json({
+      success: successfulCombinations.length > 0,
+      results,
+      summary,
+      logFile: testLogFile,
+      resultsFile: './test_meeting_results.json'
     });
     
   } catch (error) {
