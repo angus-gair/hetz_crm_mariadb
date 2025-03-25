@@ -91,7 +91,7 @@ export function Navbar() {
             <Link href="/admin" className="px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-600 hover:bg-gray-100">
               Admin
             </Link>
-            <Link href="/suitecrm-test.html" className="px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-600 hover:bg-gray-100">
+            <Link href="/crm-test" className="px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-600 hover:bg-gray-100">
               CRM Test
             </Link>
           </div>
@@ -136,7 +136,7 @@ export function Navbar() {
             <Link href="/admin" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-100">
               Admin
             </Link>
-            <Link href="/suitecrm-test.html" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-100">
+            <Link href="/crm-test" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-100">
               CRM Test
             </Link>
           </div>
