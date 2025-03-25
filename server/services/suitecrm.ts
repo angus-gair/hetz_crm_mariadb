@@ -18,6 +18,15 @@ interface TokenResponse {
   refresh_token?: string;
 }
 
+// Define type for endpoint status
+export type EndpointStatus = {
+  name: string;
+  status: number;
+  statusText: string;
+  error?: string;
+  data?: any;
+};
+
 export class SuiteCRMService {
   private baseUrl: string;
   private readonly timeout: number = 30000;
@@ -155,15 +164,9 @@ export class SuiteCRMService {
   async testConnection(): Promise<{
     success: boolean;
     message?: string;
-    endpoints?: Array<{
-      name: string;
-      status: number;
-      statusText: string;
-      error?: string;
-      data?: any;
-    }>;
+    endpoints?: EndpointStatus[];
   }> {
-    const endpoints = [];
+    const endpoints: EndpointStatus[] = [];
     let overallSuccess = false;
 
     try {

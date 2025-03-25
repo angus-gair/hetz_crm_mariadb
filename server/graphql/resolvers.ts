@@ -8,80 +8,24 @@ export class SuiteCRMResolver {
 
   @Query(() => SuiteCRMConnection)
   async testSuiteCRMConnection(): Promise<SuiteCRMConnection> {
-    const endpoints = [
-      {
-        name: 'V8 OAuth Endpoint',
-        test: async () => {
-          try {
-            // This will internally call getValidToken which handles the OAuth process
-            const testResult = await suiteCRMService.testConnection();
-            return { 
-              success: testResult, 
-              message: testResult ? 'OAuth token obtained successfully' : 'Failed to obtain OAuth token' 
-            };
-          } catch (error: any) {
-            return { success: false, message: error.message };
-          }
-        }
-      },
-      {
-        name: 'V8 Modules Endpoint',
-        test: async () => {
-          try {
-            await suiteCRMService.getModules();
-            return { success: true, message: 'Modules endpoint accessible' };
-          } catch (error: any) {
-            return { success: false, message: error.message };
-          }
-        }
-      },
-      {
-        name: 'V8 Meta Now Endpoint',
-        test: async () => {
-          try {
-            const testResult = await suiteCRMService.testConnection();
-            return { 
-              success: testResult, 
-              message: testResult ? 'Server time endpoint accessible' : 'Failed to access server time endpoint' 
-            };
-          } catch (error: any) {
-            return { success: false, message: error.message };
-          }
-        }
-      }
-    ];
-
     try {
-      console.log('Testing SuiteCRM connection');
-
-      const results = await Promise.all(
-        endpoints.map(async (endpoint) => {
-          const result = await endpoint.test();
-          return {
-            name: endpoint.name,
-            status: result.success ? 200 : 500,
-            statusText: result.success ? 'OK' : 'Error',
-            data: result,
-            error: result.success ? undefined : result.message
-          };
-        })
-      );
-
-      const isSuccessful = results.every(r => r.status === 200);
-      const message = isSuccessful ? 
-        'All endpoints successful' : 
-        'Some endpoints failed: ' + results.filter(r => r.error).map(r => r.name).join(', ');
-
+      console.log('Testing SuiteCRM connection with updated service method');
+      
+      // Use the enhanced testConnection method that now returns detailed endpoint status
+      const connectionResult = await suiteCRMService.testConnection();
+      
+      console.log('Connection test results:', connectionResult);
+      
       return new SuiteCRMConnection(
-        isSuccessful,
-        message,
-        results
+        connectionResult.success,
+        connectionResult.message || 'Connection test completed',
+        connectionResult.endpoints || []
       );
     } catch (error: any) {
-      console.error('Connection test failed:', error.message);
+      console.error('Connection test failed with error:', error.message);
       return new SuiteCRMConnection(
         false,
-        error.message,
+        `Connection test error: ${error.message}`,
         []
       );
     }
