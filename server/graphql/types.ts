@@ -139,3 +139,18 @@ export class ConsultationInput {
   @Field(() => String, { nullable: true })
   preferredTime?: string;
 }
+
+@ObjectType()
+export class APIResult {
+  @Field(() => Boolean)
+  success!: boolean;
+  
+  @Field(() => String, { nullable: true })
+  message?: string;
+  
+  @Field(() => String, { nullable: true })
+  error?: string;
+  
+  @Field(() => GraphQLJSON, { nullable: true })
+  data?: any;
+}

@@ -1,5 +1,5 @@
 import { Resolver, Query, Mutation, Arg, ObjectType, Field } from "type-graphql";
-import { SuiteCRMConnection, ModuleData, ModuleRecord, ModuleField } from "./types";
+import { SuiteCRMConnection, ModuleData, ModuleRecord, ModuleField, APIResult } from "./types";
 import { suiteCRMService } from "../services/suitecrm";
 import { GraphQLJSON } from 'graphql-type-json';
 
@@ -136,6 +136,72 @@ export class SuiteCRMResolver {
     } catch (error) {
       console.error('Failed to create consultation via GraphQL:', error);
       return false;
+    }
+  }
+
+  // GraphQL API specific methods
+  @Query(() => APIResult)
+  async getModuleRecordsWithGraphQL(
+    @Arg("module", () => String) module: string,
+    @Arg("limit", () => Number, { nullable: true }) limit?: number,
+    @Arg("offset", () => Number, { nullable: true }) offset?: number
+  ): Promise<APIResult> {
+    try {
+      console.log(`Getting ${module} records using GraphQL API...`);
+      const result = await suiteCRMService.getRecordsWithGraphQL(module, limit, offset);
+      return {
+        success: true,
+        data: result
+      };
+    } catch (error: any) {
+      console.error(`Failed to get ${module} records via GraphQL API:`, error.message);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  @Mutation(() => APIResult)
+  async createRecordWithGraphQL(
+    @Arg("module", () => String) module: string,
+    @Arg("attributes", () => GraphQLJSON) attributes: Record<string, any>
+  ): Promise<APIResult> {
+    try {
+      console.log(`Creating ${module} record using GraphQL API...`);
+      const result = await suiteCRMService.createRecordWithGraphQL(module, attributes);
+      return {
+        success: true,
+        message: `Successfully created ${module} record`,
+        data: result
+      };
+    } catch (error: any) {
+      console.error(`Failed to create ${module} record via GraphQL API:`, error.message);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  @Query(() => APIResult)
+  async executeCustomGraphQLQuery(
+    @Arg("query", () => String) query: string,
+    @Arg("variables", () => GraphQLJSON, { nullable: true }) variables?: any
+  ): Promise<APIResult> {
+    try {
+      console.log('Executing custom GraphQL query...');
+      const result = await suiteCRMService.executeGraphQLQuery(query, variables);
+      return {
+        success: true,
+        data: result
+      };
+    } catch (error: any) {
+      console.error('Failed to execute custom GraphQL query:', error.message);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 }
