@@ -284,42 +284,46 @@ export class SuiteCRMService {
       // Create a unique name for the meeting to help with identification
       const meetingName = `Consultation with ${consultationData.name} - ${new Date().toISOString().substring(0, 19).replace('T', ' ')}`;
 
-      // Create meeting using API V8 - Format according to JsonAPI spec
+      // Create meeting using API V8 - Format according to JsonAPI spec and test script example
       const meetingData = {
         data: {
           type: "Meetings",
           attributes: {
             name: meetingName,
-            date_start: formatDate(meetingDate),
-            date_end: formatDate(endDate),
+            date_start: meetingDate.toISOString().replace('T', ' ').split('.')[0],
+            date_end: endDate.toISOString().replace('T', ' ').split('.')[0],
             status: "Planned",
             description: `Contact Info:\nEmail: ${consultationData.email}\nPhone: ${consultationData.phone}\n\nNotes: ${consultationData.notes || 'No additional notes'}`,
             duration_hours: 1,
             duration_minutes: 0,
-            // Include additional contact details
-            email: consultationData.email,
-            phone: consultationData.phone,
-            direction: "Outbound",
+            assigned_user_id: "1", // Admin user
+            // Required meeting fields based on SuiteCRM documentation
+            location: "Video call",
+            reminder_time: 60,
+            email_reminder_time: 60,
             parent_type: "Contacts",
-            // Additional fields to help with calendar view
+            // Standard date formats
             date: meetingDate.toISOString().split('T')[0],
-            time_start: meetingDate.toISOString().split('T')[1].substring(0, 5)
+            // Contact details
+            contact_name: consultationData.name,
+            contact_email: consultationData.email,
+            contact_phone: consultationData.phone
           }
         }
       };
 
       console.log('[SuiteCRM] Sending meeting creation payload:', JSON.stringify(meetingData));
 
-      // Try multiple endpoint formats - different SuiteCRM installations have different paths
+      // Try multiple endpoint formats based on SuiteCRM documentation
       let response;
       const endpoints = [
-        '/Api/V8/module',
+        // New attempt with proper create format based on JsonAPI
         '/legacy/Api/V8/module',
-        '/Api/V8/module/Meetings',
-        '/legacy/Api/V8/module/Meetings',
-        '/Api/REST/V8/Meetings',
-        '/legacy/Api/REST/V8/Meetings',
-        '/rest/v10/Meetings'
+        // Try alternate format suggested in test_api.sh
+        '/legacy/Api/V8/module?_method=POST',
+        // Try module-specific endpoints
+        '/legacy/Api/V8/module/Meetings?_method=POST',
+        '/legacy/Api/V8/modules/Meetings'
       ];
       
       let lastError;
@@ -785,36 +789,41 @@ export class SuiteCRMService {
       // Format 1: ISO string (already provided)
       const dateIso = { start: startDate, end: endDate };
       
-      // Format 2: YYYY-MM-DD
+      // Format 2: YYYY-MM-DD (for date-only filters)
       const dateYmd = {
         start: startDate.split('T')[0],
         end: endDate.split('T')[0]
       };
       
-      // Format 3: YYYY-MM-DD HH:MM:SS
+      // Format 3: YYYY-MM-DD HH:MM:SS (common SQL format)
       const dateFormatted = {
         start: new Date(startDate).toISOString().replace('T', ' ').split('.')[0],
         end: new Date(endDate).toISOString().replace('T', ' ').split('.')[0]
       };
       
-      // Try multiple endpoint formats and date formats
+      // Based on the SuiteCRM API documentation, construct proper filter parameters
+      const jsonApiFilterGte = encodeURIComponent(`gte:${dateYmd.start}`);
+      const jsonApiFilterLte = encodeURIComponent(`lte:${dateYmd.end}`);
+      
+      // Try multiple endpoint formats and date formats according to JsonAPI spec
       const endpoints = [
-        // Standard API paths (according to documentation)
-        `/Api/V8/module/Meetings?filter[operator]=and&filter[date_start][gte]=${encodeURIComponent(dateIso.start)}&filter[date_start][lte]=${encodeURIComponent(dateIso.end)}`,
+        // Standard JsonAPI filter format (recommended in documentation)
+        `/Api/V8/module/Meetings?filter[date_start]=${jsonApiFilterGte}&filter[date_end]=${jsonApiFilterLte}`,
         
+        // Legacy JsonAPI format 
+        `/legacy/Api/V8/module/Meetings?filter[date_start]=${jsonApiFilterGte}&filter[date_end]=${jsonApiFilterLte}`,
+        
+        // Alternative using date field
+        `/Api/V8/module/Meetings?filter[date]=${jsonApiFilterGte}&filter[date]=${jsonApiFilterLte}`,
+        
+        // Standard filter formats with different operator syntax
         `/Api/V8/module/Meetings?filter[operator]=and&filter[date_start][gte]=${encodeURIComponent(dateYmd.start)}&filter[date_start][lte]=${encodeURIComponent(dateYmd.end)}`,
         
-        // Legacy paths (for older or customized installations)
-        `/legacy/Api/V8/module/Meetings?filter[operator]=and&filter[date_start][gte]=${encodeURIComponent(dateIso.start)}&filter[date_start][lte]=${encodeURIComponent(dateIso.end)}`,
-        
-        // Try with YMD format
+        // Legacy paths with standard operators
         `/legacy/Api/V8/module/Meetings?filter[operator]=and&filter[date_start][gte]=${encodeURIComponent(dateYmd.start)}&filter[date_start][lte]=${encodeURIComponent(dateYmd.end)}`,
         
-        // Try with formatted date
-        `/legacy/Api/V8/module/Meetings?filter[operator]=and&filter[date_start][gte]=${encodeURIComponent(dateFormatted.start)}&filter[date_start][lte]=${encodeURIComponent(dateFormatted.end)}`,
-        
-        // Standard filter formats with different date formats
-        `/legacy/Api/V8/module/Meetings?filter[date_start][$gte]=${encodeURIComponent(dateIso.start)}&filter[date_start][$lte]=${encodeURIComponent(dateIso.end)}`,
+        // Try with ISO format
+        `/legacy/Api/V8/module/Meetings?filter[operator]=and&filter[date_start][gte]=${encodeURIComponent(dateIso.start)}&filter[date_start][lte]=${encodeURIComponent(dateIso.end)}`,
         
         // Direct module ID lookup for March 26, 2025
         // If testing specifically for March 26, 2025
