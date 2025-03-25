@@ -34,7 +34,7 @@ export class SuiteCRMService {
   private tokenExpiry: number | null = null;
   private refreshPromise: Promise<string> | null = null;
   private lastLoginAttempt: number = 0;
-  private readonly loginRetryDelay: number = 60000; // 1 minute
+  private readonly loginRetryDelay: number = 5000; // 5 seconds (reduced for testing)
 
   constructor() {
     let url = process.env.SUITECRM_URL || '';
@@ -93,29 +93,99 @@ export class SuiteCRMService {
       this.lastLoginAttempt = now;
       
       // Using the full path for token endpoint as provided by the user
-      const tokenUrl = process.env.SUITECRM_URL?.includes('legacy/Api/access_token') 
-        ? process.env.SUITECRM_URL 
-        : `${this.baseUrl}/Api/access_token`;
+      // Use the correct token endpoint format from documentation
+      // SuiteCRM documentation specifies: {{suitecrm.url}}/Api/access_token
+      // But the user's environment might use a different path - try multiple formats
+      const tokenEndpointPaths = [
+        '/Api/access_token',
+        '/legacy/Api/access_token',
+        '/rest/v10/oauth2/token',
+        '/V8/oauth2/token'
+      ];
       
-      console.log('[SuiteCRM] Using token URL:', tokenUrl);
+      // Get the base URLs to try - we'll attempt multiple formats
+      const baseUrls = [
+        this.baseUrl,
+        // If URL already includes "legacy", try without that path
+        this.baseUrl.includes('/legacy') ? this.baseUrl.replace('/legacy', '') : null
+      ].filter(Boolean) as string[];
       
-      const response = await axios.post<TokenResponse>(
-        tokenUrl, 
-        {
-          grant_type: 'password',
-          client_id: clientId,
-          client_secret: clientSecret,
-          username: username,
-          password: password
-        }, 
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/vnd.api+json'
-          },
-          timeout: this.timeout
-        }
+      // Generate all possible token URLs to try
+      const tokenUrls = baseUrls.flatMap(baseUrl => 
+        tokenEndpointPaths.map(path => `${baseUrl}${path}`)
       );
+      
+      console.log('[SuiteCRM] Will try token URLs in this order:', tokenUrls);
+      
+      // Try each URL in sequence until one works
+      let tokenError = null;
+      let response = null;
+      
+      for (const tokenUrl of tokenUrls) {
+        console.log('[SuiteCRM] Trying token URL:', tokenUrl);
+        try {
+          // For basic OAuth2 compatibility, try both application/json and form encoding
+          const contentTypes = [
+            'application/json',
+            'application/x-www-form-urlencoded'
+          ];
+          
+          // Try each content type
+          for (const contentType of contentTypes) {
+            try {
+              console.log(`[SuiteCRM] Trying with Content-Type: ${contentType}`);
+              
+              // Format request data based on content type
+              const requestData = contentType === 'application/json' 
+                ? {
+                    grant_type: 'password',
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    username: username,
+                    password: password
+                  }
+                : new URLSearchParams({
+                    grant_type: 'password',
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    username: username,
+                    password: password
+                  });
+              
+              response = await axios.post<TokenResponse>(
+                tokenUrl,
+                requestData,
+                {
+                  headers: {
+                    'Content-Type': contentType,
+                    'Accept': 'application/vnd.api+json, application/json'
+                  },
+                  timeout: this.timeout
+                }
+              );
+              
+              // If we get here, the request was successful
+              console.log('[SuiteCRM] Successful token request with URL:', tokenUrl);
+              break;
+            } catch (contentTypeError: any) {
+              console.log(`[SuiteCRM] Failed with Content-Type ${contentType}:`, contentTypeError.message);
+              // Continue to next content type
+            }
+          }
+          
+          // If we got a response, break out of the URL loop
+          if (response) break;
+        } catch (urlError: any) {
+          console.log(`[SuiteCRM] Token URL ${tokenUrl} failed:`, urlError.message);
+          tokenError = urlError;
+          // Continue to next URL
+        }
+      }
+      
+      // If we tried all URLs and none worked, throw the last error
+      if (!response) {
+        throw new Error(`All token URLs failed. Last error: ${tokenError?.message || 'Unknown error'}`);
+      }
 
       if (!response.data.access_token) {
         throw new Error('No access token received');
