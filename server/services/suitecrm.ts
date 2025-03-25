@@ -509,18 +509,37 @@ export class SuiteCRMService {
 
       // Try multiple endpoint paths for SuiteCRM compatibility
       let response;
-      try {
-        console.log('[SuiteCRM] Trying lead creation with /Api/V8/module endpoint');
-        response = await this.makeRequest('/Api/V8/module', {
-          method: 'POST',
-          data: data
-        });
-      } catch (error) {
-        console.log('[SuiteCRM] Falling back to /legacy/Api/V8/module endpoint for lead creation');
-        response = await this.makeRequest('/legacy/Api/V8/module', {
-          method: 'POST',
-          data: data
-        });
+      const endpoints = [
+        '/Api/V8/module',
+        '/legacy/Api/V8/module',
+        '/Api/V8/module/Leads',
+        '/legacy/Api/V8/module/Leads',
+        '/Api/REST/V8/Leads',
+        '/legacy/Api/REST/V8/Leads',
+        '/rest/v10/Leads'
+      ];
+      
+      let lastError;
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`[SuiteCRM] Trying lead creation with ${endpoint} endpoint`);
+          response = await this.makeRequest(endpoint, {
+            method: 'POST',
+            data: data
+          });
+          // If we get here, it succeeded
+          console.log(`[SuiteCRM] Successfully used endpoint for lead: ${endpoint}`);
+          break;
+        } catch (error) {
+          console.log(`[SuiteCRM] Endpoint ${endpoint} failed for lead creation`);
+          lastError = error;
+          // Continue to next endpoint
+        }
+      }
+      
+      // If we tried all endpoints and all failed, throw the last error
+      if (!response && lastError) {
+        throw lastError;
       }
 
       if (response.data?.id) {
@@ -543,7 +562,29 @@ export class SuiteCRMService {
   // Get modules from SuiteCRM
   async getModules(): Promise<any> {
     try {
-      return await this.makeRequest('/legacy/Api/V8/meta/modules');
+      const endpoints = [
+        '/Api/V8/meta/modules',
+        '/legacy/Api/V8/meta/modules',
+        '/Api/REST/V8/metadata/modules',
+        '/legacy/Api/REST/V8/metadata/modules'
+      ];
+      
+      let response;
+      let lastError;
+      
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`[SuiteCRM] Trying to get modules with endpoint: ${endpoint}`);
+          response = await this.makeRequest(endpoint);
+          console.log(`[SuiteCRM] Successfully got modules with endpoint: ${endpoint}`);
+          return response;
+        } catch (error) {
+          console.log(`[SuiteCRM] Failed to get modules with endpoint: ${endpoint}`);
+          lastError = error;
+        }
+      }
+      
+      throw lastError || new Error('Failed to get modules from any endpoint');
     } catch (error) {
       console.error('[SuiteCRM] Failed to get modules:', error);
       throw error;
@@ -553,7 +594,29 @@ export class SuiteCRMService {
   // Get module fields
   async getModuleFields(moduleName: string): Promise<any> {
     try {
-      return await this.makeRequest(`/legacy/Api/V8/meta/fields/${moduleName}`);
+      const endpoints = [
+        `/Api/V8/meta/fields/${moduleName}`,
+        `/legacy/Api/V8/meta/fields/${moduleName}`,
+        `/Api/REST/V8/metadata/fields/${moduleName}`,
+        `/legacy/Api/REST/V8/metadata/fields/${moduleName}`
+      ];
+      
+      let response;
+      let lastError;
+      
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`[SuiteCRM] Trying to get fields for ${moduleName} with endpoint: ${endpoint}`);
+          response = await this.makeRequest(endpoint);
+          console.log(`[SuiteCRM] Successfully got fields for ${moduleName} with endpoint: ${endpoint}`);
+          return response;
+        } catch (error) {
+          console.log(`[SuiteCRM] Failed to get fields for ${moduleName} with endpoint: ${endpoint}`);
+          lastError = error;
+        }
+      }
+      
+      throw lastError || new Error(`Failed to get fields for module ${moduleName} from any endpoint`);
     } catch (error) {
       console.error(`[SuiteCRM] Failed to get fields for module ${moduleName}:`, error);
       throw error;
@@ -572,8 +635,32 @@ export class SuiteCRMService {
       if (params.size) queryParams.append('page[size]', params.size.toString());
       if (params.filter) queryParams.append('filter', params.filter);
       
-      const endpoint = `/legacy/Api/V8/module/${moduleName}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-      return await this.makeRequest(endpoint);
+      const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+      
+      const endpoints = [
+        `/Api/V8/module/${moduleName}${queryString}`,
+        `/legacy/Api/V8/module/${moduleName}${queryString}`,
+        `/Api/REST/V8/${moduleName}${queryString}`,
+        `/legacy/Api/REST/V8/${moduleName}${queryString}`,
+        `/rest/v10/${moduleName}${queryString}`
+      ];
+      
+      let response;
+      let lastError;
+      
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`[SuiteCRM] Trying to get records for ${moduleName} with endpoint: ${endpoint}`);
+          response = await this.makeRequest(endpoint);
+          console.log(`[SuiteCRM] Successfully got records for ${moduleName} with endpoint: ${endpoint}`);
+          return response;
+        } catch (error) {
+          console.log(`[SuiteCRM] Failed to get records for ${moduleName} with endpoint: ${endpoint}`);
+          lastError = error;
+        }
+      }
+      
+      throw lastError || new Error(`Failed to get records for module ${moduleName} from any endpoint`);
     } catch (error) {
       console.error(`[SuiteCRM] Failed to get records for module ${moduleName}:`, error);
       throw error;
