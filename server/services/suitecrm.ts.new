@@ -517,7 +517,7 @@ export class SuiteCRMService {
     }
   }
 
-  // Get module records using REST API V8
+  // Get module records
   async getModuleRecords(moduleName: string, params: {
     page?: number;
     size?: number;
@@ -533,112 +533,6 @@ export class SuiteCRMService {
       return await this.makeRequest(endpoint);
     } catch (error) {
       console.error(`[SuiteCRM] Failed to get records for module ${moduleName}:`, error);
-      throw error;
-    }
-  }
-
-  // Execute a GraphQL query
-  async executeGraphQLQuery(query: string, variables?: any): Promise<any> {
-    try {
-      const token = await this.getValidToken();
-      
-      // GraphQL endpoint based on documentation
-      const graphqlEndpoints = [
-        '/api/graphql',
-        '/graphql',
-        '/legacy/api/graphql'
-      ];
-      
-      let lastError = null;
-      
-      // Try each GraphQL endpoint
-      for (const endpoint of graphqlEndpoints) {
-        try {
-          console.log(`[SuiteCRM] Trying GraphQL endpoint: ${endpoint}`);
-          
-          const response = await axios.post(
-            `${this.baseUrl}${endpoint}`,
-            {
-              query,
-              variables
-            },
-            {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-              },
-              timeout: this.timeout
-            }
-          );
-          
-          if (response.data) {
-            console.log(`[SuiteCRM] GraphQL query successful using endpoint: ${endpoint}`);
-            return response.data;
-          }
-        } catch (endpointError: any) {
-          console.log(`[SuiteCRM] GraphQL endpoint ${endpoint} failed:`, endpointError.message);
-          lastError = endpointError;
-        }
-      }
-      
-      // If we reach here, all endpoints failed
-      throw lastError || new Error('All GraphQL endpoints failed');
-    } catch (error: any) {
-      console.error('[SuiteCRM] GraphQL query failed:', error.message);
-      throw error;
-    }
-  }
-  
-  // Get records using GraphQL API (alternative to REST V8)
-  async getRecordsWithGraphQL(module: string, limit: number = 10, offset: number = 0): Promise<any> {
-    try {
-      const query = `
-        query {
-          recordList(module: "${module}", limit: ${limit}, offset: ${offset}) {
-            records {
-              id
-              attributes
-              relationships
-            }
-            meta {
-              total_count
-            }
-          }
-        }
-      `;
-      
-      return await this.executeGraphQLQuery(query);
-    } catch (error) {
-      console.error(`[SuiteCRM] Failed to get ${module} records via GraphQL:`, error);
-      throw error;
-    }
-  }
-  
-  // Create a record using GraphQL API
-  async createRecordWithGraphQL(module: string, attributes: Record<string, any>): Promise<any> {
-    try {
-      // Convert attributes to input format
-      const attributeInputs = Object.entries(attributes)
-        .map(([key, value]) => `${key}: ${typeof value === 'string' ? `"${value}"` : value}`)
-        .join(', ');
-      
-      const query = `
-        mutation {
-          createRecord(module: "${module}", input: {
-            ${attributeInputs}
-          }) {
-            record {
-              id
-              attributes
-            }
-          }
-        }
-      `;
-      
-      return await this.executeGraphQLQuery(query);
-    } catch (error) {
-      console.error(`[SuiteCRM] Failed to create ${module} record via GraphQL:`, error);
       throw error;
     }
   }
