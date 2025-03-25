@@ -38,7 +38,7 @@ export class SuiteCRMService {
 
   constructor() {
     // Default URL based on test script - will be replaced by env var if available
-    let url = process.env.SUITECRM_URL || 'https://157.180.44.137';
+    let url = process.env.SUITECRM_URL || 'http://157.180.44.137';
     // Remove trailing slashes and ensure proper formatting
     url = url.replace(/\/+$/, '');
     this.baseUrl = url;
@@ -308,27 +308,38 @@ export class SuiteCRMService {
 
       // Try multiple endpoint formats - different SuiteCRM installations have different paths
       let response;
-      try {
-        // Try the standard API path first (according to documentation)
-        console.log('[SuiteCRM] Trying /Api/V8/module endpoint');
-        response = await this.makeRequest('/Api/V8/module', {
-          method: 'POST',
-          data: meetingData
-        });
-      } catch (firstError) {
+      const endpoints = [
+        '/Api/V8/module',
+        '/legacy/Api/V8/module',
+        '/Api/V8/module/Meetings',
+        '/legacy/Api/V8/module/Meetings',
+        '/Api/REST/V8/Meetings',
+        '/legacy/Api/REST/V8/Meetings',
+        '/rest/v10/Meetings'
+      ];
+      
+      let lastError;
+      
+      for (const endpoint of endpoints) {
         try {
-          console.log('[SuiteCRM] First endpoint failed, trying /legacy/Api/V8/module endpoint');
-          response = await this.makeRequest('/legacy/Api/V8/module', {
+          console.log(`[SuiteCRM] Trying ${endpoint} endpoint`);
+          response = await this.makeRequest(endpoint, {
             method: 'POST',
             data: meetingData
           });
-        } catch (secondError) {
-          console.log('[SuiteCRM] Second endpoint failed, trying /Api/V8/module/Meetings endpoint');
-          response = await this.makeRequest('/Api/V8/module/Meetings', {
-            method: 'POST',
-            data: meetingData
-          });
+          // If we get here, it succeeded
+          console.log(`[SuiteCRM] Successfully used endpoint: ${endpoint}`);
+          break;
+        } catch (error) {
+          console.log(`[SuiteCRM] Endpoint ${endpoint} failed`);
+          lastError = error;
+          // Continue to next endpoint
         }
+      }
+      
+      // If we tried all endpoints and all failed, throw the last error
+      if (!response && lastError) {
+        throw lastError;
       }
 
       console.log('[SuiteCRM] Meeting creation response:', JSON.stringify(response));
@@ -417,18 +428,37 @@ export class SuiteCRMService {
 
       // Try multiple endpoint paths for SuiteCRM compatibility
       let response;
-      try {
-        console.log('[SuiteCRM] Trying contact creation with /Api/V8/module endpoint');
-        response = await this.makeRequest('/Api/V8/module', {
-          method: 'POST',
-          data: data
-        });
-      } catch (error) {
-        console.log('[SuiteCRM] Falling back to /legacy/Api/V8/module endpoint for contact creation');
-        response = await this.makeRequest('/legacy/Api/V8/module', {
-          method: 'POST',
-          data: data
-        });
+      const endpoints = [
+        '/Api/V8/module',
+        '/legacy/Api/V8/module',
+        '/Api/V8/module/Contacts',
+        '/legacy/Api/V8/module/Contacts',
+        '/Api/REST/V8/Contacts',
+        '/legacy/Api/REST/V8/Contacts',
+        '/rest/v10/Contacts'
+      ];
+      
+      let lastError;
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`[SuiteCRM] Trying contact creation with ${endpoint} endpoint`);
+          response = await this.makeRequest(endpoint, {
+            method: 'POST',
+            data: data
+          });
+          // If we get here, it succeeded
+          console.log(`[SuiteCRM] Successfully used endpoint for contact: ${endpoint}`);
+          break;
+        } catch (error) {
+          console.log(`[SuiteCRM] Endpoint ${endpoint} failed for contact creation`);
+          lastError = error;
+          // Continue to next endpoint
+        }
+      }
+      
+      // If we tried all endpoints and all failed, throw the last error
+      if (!response && lastError) {
+        throw lastError;
       }
 
       if (response.data?.id) {
