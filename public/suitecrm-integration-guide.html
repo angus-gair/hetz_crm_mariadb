@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuiteCRM Integration Guide</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1, h2, h3 {
+      color: #2c3e50;
+    }
+    .card {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    pre {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      overflow-x: auto;
+    }
+    code {
+      font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+      font-size: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .note {
+      background-color: #e7f3fe;
+      border-left: 6px solid #2196F3;
+      padding: 10px;
+      margin: 15px 0;
+    }
+    .warning {
+      background-color: #fffbea;
+      border-left: 6px solid #ffc107;
+      padding: 10px;
+      margin: 15px 0;
+    }
+    a {
+      color: #3498db;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>SuiteCRM Integration Guide</h1>
+  
+  <div class="card">
+    <h2>Overview</h2>
+    <p>This guide explains how to use the SuiteCRM integration in our application. Our integration supports both the REST API V8 and GraphQL API endpoints of SuiteCRM.</p>
+    <p>The integration allows you to:</p>
+    <ul>
+      <li>Retrieve data from SuiteCRM modules</li>
+      <li>Create new records in SuiteCRM</li>
+      <li>Schedule consultation meetings with automatic SuiteCRM integration</li>
+      <li>Run custom GraphQL queries against the SuiteCRM API</li>
+    </ul>
+    <p><a href="/suitecrm-test.html">Use the SuiteCRM API Test Tool</a></p>
+  </div>
+  
+  <div class="card">
+    <h2>Configuration</h2>
+    <p>The SuiteCRM integration requires the following environment variables to be set:</p>
+    <table>
+      <tr>
+        <th>Variable</th>
+        <th>Description</th>
+        <th>Required</th>
+      </tr>
+      <tr>
+        <td>SUITECRM_URL</td>
+        <td>Base URL of your SuiteCRM installation (e.g., https://crm.example.com)</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>SUITECRM_CLIENT_ID</td>
+        <td>OAuth client ID for API access</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>SUITECRM_CLIENT_SECRET</td>
+        <td>OAuth client secret for API access</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>SUITECRM_USERNAME</td>
+        <td>SuiteCRM username (for password grant authentication)</td>
+        <td>No*</td>
+      </tr>
+      <tr>
+        <td>SUITECRM_PASSWORD</td>
+        <td>SuiteCRM password (for password grant authentication)</td>
+        <td>No*</td>
+      </tr>
+    </table>
+    <p>* Username and password are required only if using Password Grant authentication. If not provided, the integration will use Client Credentials grant.</p>
+    
+    <div class="note">
+      <p><strong>Note:</strong> The integration is designed to work with both HTTP and HTTPS URLs. However, using HTTPS is strongly recommended for production environments.</p>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>API Endpoints</h2>
+    <p>The integration supports two types of SuiteCRM APIs:</p>
+    
+    <h3>REST API V8</h3>
+    <p>The REST API V8 provides a JSON:API compliant interface to interact with SuiteCRM data. Our integration supports:</p>
+    <ul>
+      <li>Listing modules</li>
+      <li>Getting module fields</li>
+      <li>Retrieving module records</li>
+      <li>Creating new records</li>
+    </ul>
+    
+    <h3>GraphQL API</h3>
+    <p>The GraphQL API provides a more flexible way to query SuiteCRM data. Our integration supports:</p>
+    <ul>
+      <li>Querying records with custom field selection</li>
+      <li>Creating records</li>
+      <li>Running custom GraphQL queries</li>
+    </ul>
+    
+    <div class="warning">
+      <p><strong>Warning:</strong> The SuiteCRM GraphQL API endpoint might vary depending on your SuiteCRM version and configuration. Our integration tries multiple known endpoint paths to find the correct one.</p>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Authentication</h2>
+    <p>The integration supports two OAuth2 authentication grant types:</p>
+    
+    <h3>Password Grant</h3>
+    <p>Used when SUITECRM_USERNAME and SUITECRM_PASSWORD are provided. This grant type is more suitable for applications that act on behalf of a specific user.</p>
+    <pre><code>grant_type: "password",
+client_id: SUITECRM_CLIENT_ID,
+client_secret: SUITECRM_CLIENT_SECRET,
+username: SUITECRM_USERNAME,
+password: SUITECRM_PASSWORD</code></pre>
+    
+    <h3>Client Credentials Grant</h3>
+    <p>Used when username and password are not provided. This grant type is more suitable for server-to-server integrations.</p>
+    <pre><code>grant_type: "client_credentials",
+client_id: SUITECRM_CLIENT_ID,
+client_secret: SUITECRM_CLIENT_SECRET</code></pre>
+    
+    <div class="note">
+      <p><strong>Note:</strong> The integration automatically handles token refreshing when tokens expire.</p>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Using the GraphQL API</h2>
+    <p>To use the GraphQL API in your code, you can use the provided GraphQL resolver endpoints:</p>
+    
+    <h3>Example Query</h3>
+    <pre><code>// Example of using the GraphQL API from JavaScript
+async function fetchAccountsWithGraphQL() {
+  const response = await fetch('/api/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      query: `
+        query {
+          getModuleRecordsWithGraphQL(
+            module: "Accounts", 
+            limit: 5
+          ) {
+            success
+            error
+            data
+          }
+        }
+      `
+    })
+  });
+  
+  const data = await response.json();
+  return data.data.getModuleRecordsWithGraphQL;
+}</code></pre>
+    
+    <h3>Custom GraphQL Queries</h3>
+    <p>For more advanced use cases, you can execute custom GraphQL queries directly against the SuiteCRM GraphQL API:</p>
+    <pre><code>// Example of executing a custom GraphQL query
+async function executeCustomQuery() {
+  const response = await fetch('/api/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      query: `
+        query {
+          executeCustomGraphQLQuery(
+            query: "query { recordList(module: \\"Contacts\\", limit: 5) { records { id attributes } } }"
+          ) {
+            success
+            error
+            data
+          }
+        }
+      `
+    })
+  });
+  
+  const data = await response.json();
+  return data.data.executeCustomGraphQLQuery;
+}</code></pre>
+  </div>
+  
+  <div class="card">
+    <h2>Troubleshooting</h2>
+    <p>If you encounter issues with the SuiteCRM integration, try the following steps:</p>
+    
+    <h3>Check Connection</h3>
+    <p>Use the <a href="/suitecrm-test.html">SuiteCRM API Test Tool</a> to verify that your connection is working properly.</p>
+    
+    <h3>Common Issues</h3>
+    <ul>
+      <li><strong>Authentication Errors:</strong> Verify your client ID, client secret, username, and password.</li>
+      <li><strong>Wrong URL Format:</strong> Make sure the SUITECRM_URL doesn't have a trailing slash and includes the protocol (http:// or https://).</li>
+      <li><strong>GraphQL Endpoint Not Found:</strong> The integration tries multiple known GraphQL endpoint paths. If none work, check your SuiteCRM installation for the correct GraphQL endpoint.</li>
+      <li><strong>API Rate Limiting:</strong> SuiteCRM might have rate limiting configured. If you're making many requests in a short period, you might hit these limits.</li>
+    </ul>
+    
+    <h3>Debugging</h3>
+    <p>The integration logs detailed information about API requests and responses. Check the application logs for more information about what might be going wrong.</p>
+  </div>
+  
+  <footer style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
+    <p>For more information, please contact the development team.</p>
+    <p><a href="/">Back to Home</a> | <a href="/suitecrm-test.html">SuiteCRM API Test Tool</a></p>
+  </footer>
+</body>
+</html>

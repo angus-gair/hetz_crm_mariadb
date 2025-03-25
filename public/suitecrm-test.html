@@ -1,387 +1,459 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SuiteCRM API Test</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        h1 {
-            color: #2563eb;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 10px;
-        }
-        .card {
-            background-color: #f9fafb;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-        button {
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 10px;
-            margin-bottom: 10px;
-        }
-        button:hover {
-            background-color: #1d4ed8;
-        }
-        pre {
-            background-color: #1e293b;
-            color: #e2e8f0;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        .success {
-            color: #16a34a;
-            font-weight: bold;
-        }
-        .error {
-            color: #dc2626;
-            font-weight: bold;
-        }
-        .endpoints {
-            margin-top: 15px;
-        }
-        .endpoint {
-            margin-bottom: 10px;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        .endpoint.success {
-            background-color: rgba(22, 163, 74, 0.1);
-            color: #16a34a;
-        }
-        .endpoint.error {
-            background-color: rgba(220, 38, 38, 0.1);
-            color: #dc2626;
-        }
-        .loader {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #2563eb;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-right: 10px;
-            vertical-align: middle;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuiteCRM API Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1, h2, h3 {
+      color: #2c3e50;
+    }
+    .card {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      background: #eee;
+      border: 1px solid #ddd;
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      margin-right: 5px;
+    }
+    .tab.active {
+      background: #fff;
+      border-bottom: 1px solid #fff;
+      margin-bottom: -1px;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    textarea, input, select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+    }
+    .result {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .error {
+      color: #d9534f;
+      font-weight: bold;
+    }
+    .success {
+      color: #5cb85c;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-    <h1>SuiteCRM API Test</h1>
+  <h1>SuiteCRM API Test Tool</h1>
+  <p>This tool helps test both REST API V8 and GraphQL API connections to SuiteCRM.</p>
+  
+  <div class="tabs">
+    <div class="tab active" data-tab="connection">Connection Test</div>
+    <div class="tab" data-tab="rest">REST API V8</div>
+    <div class="tab" data-tab="graphql">GraphQL API</div>
+    <div class="tab" data-tab="custom">Custom Query</div>
+  </div>
+  
+  <div id="connection" class="tab-content active card">
+    <h2>Test SuiteCRM Connection</h2>
+    <p>This test will check if your SuiteCRM connection is properly configured.</p>
+    <button id="test-connection">Test Connection</button>
+    <div id="connection-result" class="result"></div>
+  </div>
+  
+  <div id="rest" class="tab-content card">
+    <h2>REST API V8 Tests</h2>
     
-    <div class="card">
-        <h2>Connection Test</h2>
-        <button id="test-connection">Test Connection</button>
-        <div id="connection-result"></div>
+    <div class="form-group">
+      <label class="label">Module Name:</label>
+      <select id="rest-module">
+        <option value="Accounts">Accounts</option>
+        <option value="Contacts">Contacts</option>
+        <option value="Leads">Leads</option>
+        <option value="Meetings">Meetings</option>
+        <option value="Opportunities">Opportunities</option>
+      </select>
     </div>
     
-    <div class="card">
-        <h2>Module List</h2>
-        <button id="get-modules">Get Modules</button>
-        <div id="modules-result"></div>
+    <div class="form-group">
+      <label class="label">Action:</label>
+      <select id="rest-action">
+        <option value="list">Get Records</option>
+        <option value="fields">Get Fields</option>
+      </select>
     </div>
     
-    <div class="card">
-        <h2>Module Fields</h2>
-        <select id="module-select" style="padding: 8px; margin-right: 10px;">
-            <option value="">Select a module</option>
-        </select>
-        <button id="get-fields">Get Fields</button>
-        <div id="fields-result"></div>
+    <button id="execute-rest">Execute REST API Request</button>
+    <div id="rest-result" class="result"></div>
+  </div>
+  
+  <div id="graphql" class="tab-content card">
+    <h2>GraphQL API Tests</h2>
+    
+    <div class="form-group">
+      <label class="label">Module Name:</label>
+      <select id="graphql-module">
+        <option value="Accounts">Accounts</option>
+        <option value="Contacts">Contacts</option>
+        <option value="Leads">Leads</option>
+        <option value="Meetings">Meetings</option>
+        <option value="Opportunities">Opportunities</option>
+      </select>
     </div>
     
-    <div class="card">
-        <h2>Create Contact Test</h2>
-        <form id="contact-form">
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px;">First Name:</label>
-                <input type="text" id="firstName" style="padding: 8px; width: 300px;" value="Test">
-            </div>
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px;">Last Name:</label>
-                <input type="text" id="lastName" style="padding: 8px; width: 300px;" value="Contact">
-            </div>
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px;">Email:</label>
-                <input type="email" id="email" style="padding: 8px; width: 300px;" value="test@example.com">
-            </div>
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px;">Phone:</label>
-                <input type="text" id="phone" style="padding: 8px; width: 300px;" value="123-456-7890">
-            </div>
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px;">Message:</label>
-                <textarea id="message" style="padding: 8px; width: 300px; height: 100px;">Test contact created via API</textarea>
-            </div>
-            <button type="submit">Create Contact</button>
-        </form>
-        <div id="contact-result"></div>
+    <div class="form-group">
+      <label class="label">Limit:</label>
+      <input type="number" id="graphql-limit" value="5" min="1" max="100">
     </div>
+    
+    <div class="form-group">
+      <label class="label">Offset:</label>
+      <input type="number" id="graphql-offset" value="0" min="0">
+    </div>
+    
+    <button id="execute-graphql">Execute GraphQL Query</button>
+    <div id="graphql-result" class="result"></div>
+  </div>
+  
+  <div id="custom" class="tab-content card">
+    <h2>Custom GraphQL Query</h2>
+    
+    <div class="form-group">
+      <label class="label">GraphQL Query:</label>
+      <textarea id="custom-query" rows="10">query {
+  recordList(module: "Accounts", limit: 5) {
+    records {
+      id
+      attributes
+    }
+    meta {
+      total_count
+    }
+  }
+}</textarea>
+    </div>
+    
+    <div class="form-group">
+      <label class="label">Variables (JSON):</label>
+      <textarea id="custom-variables" rows="5">{}</textarea>
+    </div>
+    
+    <button id="execute-custom">Execute Custom Query</button>
+    <div id="custom-result" class="result"></div>
+  </div>
 
-    <script>
-        // Helper function for making GraphQL requests
-        async function fetchGraphQL(query, variables = {}) {
-            const response = await fetch('/graphql', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    query,
-                    variables
-                })
-            });
-            
-            return await response.json();
+  <script>
+    // Tab switching functionality
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Remove active class from all tabs and contents
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        // Add active class to clicked tab and corresponding content
+        tab.classList.add('active');
+        const tabId = tab.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+      });
+    });
+    
+    // Test connection
+    document.getElementById('test-connection').addEventListener('click', async () => {
+      const resultElement = document.getElementById('connection-result');
+      resultElement.innerHTML = '<p>Testing connection...</p>';
+      
+      try {
+        const response = await fetch('/api/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `
+              query {
+                testSuiteCRMConnection {
+                  success
+                  message
+                  endpoints {
+                    name
+                    status
+                    statusText
+                    error
+                    data
+                  }
+                }
+              }
+            `
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.errors) {
+          throw new Error(data.errors[0].message);
         }
         
-        // Function to show loading state
-        function showLoading(elementId) {
-            const element = document.getElementById(elementId);
-            element.innerHTML = '<div class="loader"></div> Loading...';
+        const result = data.data.testSuiteCRMConnection;
+        
+        let html = `<p class="${result.success ? 'success' : 'error'}">
+          ${result.success ? '✅ Connection Successful' : '❌ Connection Failed'}
+        </p>
+        <p><strong>Message:</strong> ${result.message}</p>
+        <p><strong>Endpoint Status:</strong></p>
+        <ul>`;
+        
+        result.endpoints.forEach(endpoint => {
+          html += `<li>
+            <strong>${endpoint.name}</strong>: 
+            <span class="${endpoint.status === 200 ? 'success' : 'error'}">
+              ${endpoint.status} ${endpoint.statusText}
+            </span>
+            ${endpoint.error ? `<br><span class="error">Error: ${endpoint.error}</span>` : ''}
+            ${endpoint.data ? `<br>Data: ${JSON.stringify(endpoint.data, null, 2)}` : ''}
+          </li>`;
+        });
+        
+        html += '</ul>';
+        resultElement.innerHTML = html;
+      } catch (error) {
+        resultElement.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    });
+    
+    // Execute REST API Request
+    document.getElementById('execute-rest').addEventListener('click', async () => {
+      const resultElement = document.getElementById('rest-result');
+      resultElement.innerHTML = '<p>Executing REST API request...</p>';
+      
+      const module = document.getElementById('rest-module').value;
+      const action = document.getElementById('rest-action').value;
+      
+      try {
+        let query;
+        
+        if (action === 'list') {
+          query = `
+            query {
+              getSuiteCRMModuleRecords(moduleName: "${module}", page: 1, size: 5) {
+                success
+                moduleName
+                error
+                data
+              }
+            }
+          `;
+        } else if (action === 'fields') {
+          query = `
+            query {
+              getSuiteCRMModuleFields(moduleName: "${module}") {
+                success
+                moduleName
+                error
+                data
+              }
+            }
+          `;
         }
         
-        // Function to format JSON with syntax highlighting (simple version)
-        function formatJSON(json) {
-            if (typeof json !== 'string') {
-                json = JSON.stringify(json, null, 2);
-            }
-            return json;
+        const response = await fetch('/api/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query })
+        });
+        
+        const data = await response.json();
+        
+        if (data.errors) {
+          throw new Error(data.errors[0].message);
         }
         
-        // Test connection
-        document.getElementById('test-connection').addEventListener('click', async () => {
-            const resultElement = document.getElementById('connection-result');
-            showLoading('connection-result');
-            
-            try {
-                const query = `
-                    query {
-                        testSuiteCRMConnection {
-                            success
-                            message
-                            endpoints {
-                                name
-                                status
-                                statusText
-                                error
-                            }
-                        }
-                    }
-                `;
-                
-                const result = await fetchGraphQL(query);
-                console.log('Connection test result:', result);
-                
-                const connectionData = result.data?.testSuiteCRMConnection;
-                
-                if (connectionData) {
-                    let html = '';
-                    
-                    if (connectionData.success) {
-                        html += `<p class="success">✅ Connection successful! ${connectionData.message}</p>`;
-                    } else {
-                        html += `<p class="error">❌ Connection failed: ${connectionData.message}</p>`;
-                    }
-                    
-                    if (connectionData.endpoints && connectionData.endpoints.length > 0) {
-                        html += '<div class="endpoints">';
-                        connectionData.endpoints.forEach(endpoint => {
-                            const statusClass = endpoint.status >= 200 && endpoint.status < 300 ? 'success' : 'error';
-                            html += `
-                                <div class="endpoint ${statusClass}">
-                                    <strong>${endpoint.name}</strong>: ${endpoint.status} ${endpoint.statusText}
-                                    ${endpoint.error ? `<br>Error: ${endpoint.error}` : ''}
-                                </div>
-                            `;
-                        });
-                        html += '</div>';
-                    }
-                    
-                    resultElement.innerHTML = html;
-                } else {
-                    resultElement.innerHTML = `<p class="error">❌ Error: Invalid response from server</p>`;
-                }
-            } catch (error) {
-                console.error('Error testing connection:', error);
-                resultElement.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+        const result = action === 'list' 
+          ? data.data.getSuiteCRMModuleRecords 
+          : data.data.getSuiteCRMModuleFields;
+        
+        let html = `<p class="${result.success ? 'success' : 'error'}">
+          ${result.success ? '✅ Request Successful' : '❌ Request Failed'}
+        </p>`;
+        
+        if (result.error) {
+          html += `<p class="error"><strong>Error:</strong> ${result.error}</p>`;
+        }
+        
+        html += `<pre>${JSON.stringify(result.data, null, 2)}</pre>`;
+        resultElement.innerHTML = html;
+      } catch (error) {
+        resultElement.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    });
+    
+    // Execute GraphQL API Request
+    document.getElementById('execute-graphql').addEventListener('click', async () => {
+      const resultElement = document.getElementById('graphql-result');
+      resultElement.innerHTML = '<p>Executing GraphQL API request...</p>';
+      
+      const module = document.getElementById('graphql-module').value;
+      const limit = document.getElementById('graphql-limit').value;
+      const offset = document.getElementById('graphql-offset').value;
+      
+      try {
+        const query = `
+          query {
+            getModuleRecordsWithGraphQL(
+              module: "${module}", 
+              limit: ${limit}, 
+              offset: ${offset}
+            ) {
+              success
+              error
+              data
             }
+          }
+        `;
+        
+        const response = await fetch('/api/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query })
         });
         
-        // Get modules
-        document.getElementById('get-modules').addEventListener('click', async () => {
-            const resultElement = document.getElementById('modules-result');
-            const moduleSelect = document.getElementById('module-select');
-            showLoading('modules-result');
-            
-            try {
-                const query = `
-                    query {
-                        getSuiteCRMModules {
-                            success
-                            error
-                            data
-                        }
-                    }
-                `;
-                
-                const result = await fetchGraphQL(query);
-                console.log('Modules result:', result);
-                
-                const modulesData = result.data?.getSuiteCRMModules;
-                
-                if (modulesData && modulesData.success) {
-                    resultElement.innerHTML = `
-                        <p class="success">✅ Modules retrieved successfully</p>
-                        <pre>${formatJSON(modulesData.data)}</pre>
-                    `;
-                    
-                    // Populate module select dropdown
-                    moduleSelect.innerHTML = '<option value="">Select a module</option>';
-                    if (modulesData.data && modulesData.data.modules) {
-                        Object.keys(modulesData.data.modules).forEach(moduleName => {
-                            const option = document.createElement('option');
-                            option.value = moduleName;
-                            option.textContent = moduleName;
-                            moduleSelect.appendChild(option);
-                        });
-                    }
-                } else {
-                    resultElement.innerHTML = `
-                        <p class="error">❌ Failed to retrieve modules: ${modulesData?.error || 'Unknown error'}</p>
-                    `;
-                }
-            } catch (error) {
-                console.error('Error getting modules:', error);
-                resultElement.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+        const data = await response.json();
+        
+        if (data.errors) {
+          throw new Error(data.errors[0].message);
+        }
+        
+        const result = data.data.getModuleRecordsWithGraphQL;
+        
+        let html = `<p class="${result.success ? 'success' : 'error'}">
+          ${result.success ? '✅ Request Successful' : '❌ Request Failed'}
+        </p>`;
+        
+        if (result.error) {
+          html += `<p class="error"><strong>Error:</strong> ${result.error}</p>`;
+        }
+        
+        html += `<pre>${JSON.stringify(result.data, null, 2)}</pre>`;
+        resultElement.innerHTML = html;
+      } catch (error) {
+        resultElement.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    });
+    
+    // Execute Custom GraphQL Query
+    document.getElementById('execute-custom').addEventListener('click', async () => {
+      const resultElement = document.getElementById('custom-result');
+      resultElement.innerHTML = '<p>Executing custom query...</p>';
+      
+      const customQuery = document.getElementById('custom-query').value;
+      const variablesText = document.getElementById('custom-variables').value;
+      
+      try {
+        let variables = {};
+        
+        if (variablesText.trim()) {
+          variables = JSON.parse(variablesText);
+        }
+        
+        const query = `
+          query {
+            executeCustomGraphQLQuery(
+              query: ${JSON.stringify(customQuery)}, 
+              variables: ${JSON.stringify(variables)}
+            ) {
+              success
+              error
+              data
             }
+          }
+        `;
+        
+        const response = await fetch('/api/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query })
         });
         
-        // Get module fields
-        document.getElementById('get-fields').addEventListener('click', async () => {
-            const moduleSelect = document.getElementById('module-select');
-            const resultElement = document.getElementById('fields-result');
-            const selectedModule = moduleSelect.value;
-            
-            if (!selectedModule) {
-                resultElement.innerHTML = `<p class="error">Please select a module first</p>`;
-                return;
-            }
-            
-            showLoading('fields-result');
-            
-            try {
-                const query = `
-                    query GetModuleFields($moduleName: String!) {
-                        getSuiteCRMModuleFields(moduleName: $moduleName) {
-                            success
-                            moduleName
-                            error
-                            data
-                        }
-                    }
-                `;
-                
-                const variables = {
-                    moduleName: selectedModule
-                };
-                
-                const result = await fetchGraphQL(query, variables);
-                console.log('Fields result:', result);
-                
-                const fieldsData = result.data?.getSuiteCRMModuleFields;
-                
-                if (fieldsData && fieldsData.success) {
-                    resultElement.innerHTML = `
-                        <p class="success">✅ Fields for ${fieldsData.moduleName} retrieved successfully</p>
-                        <pre>${formatJSON(fieldsData.data)}</pre>
-                    `;
-                } else {
-                    resultElement.innerHTML = `
-                        <p class="error">❌ Failed to retrieve fields: ${fieldsData?.error || 'Unknown error'}</p>
-                    `;
-                }
-            } catch (error) {
-                console.error('Error getting fields:', error);
-                resultElement.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
-            }
-        });
+        const data = await response.json();
         
-        // Create contact
-        document.getElementById('contact-form').addEventListener('submit', async (event) => {
-            event.preventDefault();
-            
-            const resultElement = document.getElementById('contact-result');
-            showLoading('contact-result');
-            
-            const firstName = document.getElementById('firstName').value;
-            const lastName = document.getElementById('lastName').value;
-            const email = document.getElementById('email').value;
-            const phone = document.getElementById('phone').value;
-            const message = document.getElementById('message').value;
-            
-            try {
-                const query = `
-                    mutation CreateContact($firstName: String!, $lastName: String!, $email: String!, $phone: String, $message: String) {
-                        createSuiteCRMContact(
-                            firstName: $firstName
-                            lastName: $lastName
-                            email: $email
-                            phone: $phone
-                            message: $message
-                        )
-                    }
-                `;
-                
-                const variables = {
-                    firstName,
-                    lastName,
-                    email,
-                    phone,
-                    message
-                };
-                
-                const result = await fetchGraphQL(query, variables);
-                console.log('Create contact result:', result);
-                
-                const success = result.data?.createSuiteCRMContact;
-                
-                if (success === true) {
-                    resultElement.innerHTML = `
-                        <p class="success">✅ Contact created successfully</p>
-                    `;
-                } else {
-                    resultElement.innerHTML = `
-                        <p class="error">❌ Failed to create contact</p>
-                        <pre>${formatJSON(result)}</pre>
-                    `;
-                }
-            } catch (error) {
-                console.error('Error creating contact:', error);
-                resultElement.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
-            }
-        });
-    </script>
+        if (data.errors) {
+          throw new Error(data.errors[0].message);
+        }
+        
+        const result = data.data.executeCustomGraphQLQuery;
+        
+        let html = `<p class="${result.success ? 'success' : 'error'}">
+          ${result.success ? '✅ Query Successful' : '❌ Query Failed'}
+        </p>`;
+        
+        if (result.error) {
+          html += `<p class="error"><strong>Error:</strong> ${result.error}</p>`;
+        }
+        
+        html += `<pre>${JSON.stringify(result.data, null, 2)}</pre>`;
+        resultElement.innerHTML = html;
+      } catch (error) {
+        resultElement.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    });
+  </script>
 </body>
 </html>
