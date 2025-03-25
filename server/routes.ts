@@ -267,6 +267,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register the lead routes
   app.use("/api/crm/leads", leadRoutes);
+  
+  // Register the new CRM routes with enhanced functionality
+  app.use("/api/crm", crmRoutes);
 
   // Set up Apollo GraphQL Server
   try {
