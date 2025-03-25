@@ -440,6 +440,50 @@ export class SuiteCRMService {
       throw error;
     }
   }
+
+  // Get meetings for a specific date range
+  async getMeetingsForDateRange(startDate: string, endDate: string): Promise<any[]> {
+    try {
+      console.log(`[SuiteCRM] Fetching meetings between ${startDate} and ${endDate}`);
+      
+      // Build filter parameters based on SuiteCRM API documentation
+      // Using the filter format: filter[operator]=and&filter[date_start][gte]=startDate&filter[date_start][lte]=endDate
+      const queryParams = new URLSearchParams();
+      queryParams.append('filter[operator]', 'and');
+      queryParams.append('filter[date_start][gte]', startDate);
+      queryParams.append('filter[date_start][lte]', endDate);
+      
+      // Get meetings with the date filter
+      const endpoint = `/legacy/Api/V8/module/Meetings?${queryParams.toString()}`;
+      const response = await this.makeRequest(endpoint);
+      
+      console.log(`[SuiteCRM] Found ${response.data?.length || 0} meetings for the date range`);
+      
+      // If no data or empty array, return empty array
+      if (!response.data || response.data.length === 0) {
+        return [];
+      }
+      
+      // Transform the data to a cleaner format for the front-end
+      return response.data.map((meeting: any) => ({
+        id: meeting.id,
+        name: meeting.attributes?.name || 'Untitled Meeting',
+        dateStart: meeting.attributes?.date_start || '',
+        dateEnd: meeting.attributes?.date_end || '',
+        duration: {
+          hours: parseInt(meeting.attributes?.duration_hours || '0', 10),
+          minutes: parseInt(meeting.attributes?.duration_minutes || '0', 10)
+        },
+        status: meeting.attributes?.status || 'Planned',
+        type: meeting.attributes?.type || '',
+        description: meeting.attributes?.description || '',
+        location: meeting.attributes?.location || ''
+      }));
+    } catch (error) {
+      console.error('[SuiteCRM] Failed to get meetings for date range:', error);
+      throw error;
+    }
+  }
 }
 
 export const suiteCRMService = new SuiteCRMService();

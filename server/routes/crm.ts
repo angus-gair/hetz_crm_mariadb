@@ -79,4 +79,46 @@ router.get('/modules', async (_req: Request, res: Response) => {
   }
 });
 
+// Get calendar meetings for a specific date
+router.get('/calendar/:date', async (req: Request, res: Response) => {
+  try {
+    const { date } = req.params;
+    
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Please use YYYY-MM-DD format.'
+      });
+    }
+    
+    console.log(`[API] Fetching calendar entries for date: ${date}`);
+    
+    // Convert to start and end of day in ISO format
+    const startDate = new Date(date);
+    startDate.setUTCHours(0, 0, 0, 0);
+    
+    const endDate = new Date(date);
+    endDate.setUTCHours(23, 59, 59, 999);
+    
+    // Format for filtering
+    const startDateIso = startDate.toISOString();
+    const endDateIso = endDate.toISOString();
+    
+    // Get meetings from SuiteCRM
+    const meetings = await suiteCRMService.getMeetingsForDateRange(startDateIso, endDateIso);
+    
+    return res.json({ 
+      success: true, 
+      date,
+      meetings 
+    });
+  } catch (error) {
+    console.error('[API] Failed to get calendar entries:', error);
+    return res.status(500).json({
+      success: false,
+      message: `Failed to get calendar entries: ${error instanceof Error ? error.message : String(error)}`
+    });
+  }
+});
+
 export { router as crmRoutes };

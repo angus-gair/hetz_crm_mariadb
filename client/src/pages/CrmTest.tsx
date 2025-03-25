@@ -3,8 +3,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { AlertCircle, CheckCircle2, Clock, Calendar as CalendarIcon } from "lucide-react";
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { format } from 'date-fns';
 
 export default function CrmTest() {
   const [showToken, setShowToken] = useState(false);
@@ -109,10 +111,11 @@ export default function CrmTest() {
       <h1 className="text-3xl font-bold mb-8">SuiteCRM Integration Test</h1>
       
       <Tabs defaultValue="auth">
-        <TabsList className="grid w-full md:w-[400px] grid-cols-3">
+        <TabsList className="grid w-full md:w-[500px] grid-cols-4">
           <TabsTrigger value="auth">Authentication</TabsTrigger>
           <TabsTrigger value="leads">Leads</TabsTrigger>
           <TabsTrigger value="consultations">Consultations</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
         </TabsList>
         
         <TabsContent value="auth" className="mt-4">
@@ -304,7 +307,142 @@ export default function CrmTest() {
             </CardFooter>
           </Card>
         </TabsContent>
+        
+        <TabsContent value="calendar" className="mt-4">
+          <CalendarContent />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// Calendar content component
+function CalendarContent() {
+  const targetDate = '2025-03-26'; // March 26, 2025
+  const formattedDate = format(new Date(targetDate), 'MMMM d, yyyy');
+  
+  const { 
+    data: calendarData, 
+    isLoading: isLoadingCalendar, 
+    error: calendarError,
+    refetch: refetchCalendar 
+  } = useQuery({
+    queryKey: [`/api/crm/calendar/${targetDate}`],
+    queryFn: async () => {
+      const response = await fetch(`/api/crm/calendar/${targetDate}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch calendar data');
+      }
+      return response.json();
+    },
+  });
+  
+  const meetings = calendarData?.meetings || [];
+  
+  return (
+    <div>
+      <Card className="mb-4">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center">
+              <CalendarIcon className="h-5 w-5 mr-2" />
+              Meetings Calendar
+            </CardTitle>
+            <CardDescription>
+              View scheduled meetings for {formattedDate}
+            </CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={() => refetchCalendar()}
+            disabled={isLoadingCalendar}
+          >
+            {isLoadingCalendar ? (
+              <>
+                <Clock className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              'Refresh'
+            )}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {calendarError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                Failed to load calendar data: {String(calendarError)}
+              </AlertDescription>
+            </Alert>
+          ) : isLoadingCalendar ? (
+            <div className="flex items-center justify-center p-8">
+              <Clock className="mr-2 h-6 w-6 animate-spin" />
+              <span>Loading meetings...</span>
+            </div>
+          ) : meetings.length === 0 ? (
+            <div className="text-center p-8 text-gray-500">
+              <CalendarIcon className="h-12 w-12 mx-auto mb-2 opacity-20" />
+              <p>No meetings scheduled for this date.</p>
+              <p className="text-sm mt-2">Try creating a test consultation to see it appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-sm font-medium">
+                {meetings.length} {meetings.length === 1 ? 'meeting' : 'meetings'} scheduled for {formattedDate}
+              </div>
+              
+              <div className="space-y-3">
+                {meetings.map((meeting: any, index: number) => (
+                  <div key={index} className="border rounded-lg p-4 shadow-sm">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-medium">{meeting.name}</h3>
+                      <div className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
+                        {meeting.status}
+                      </div>
+                    </div>
+                    
+                    {meeting.dateStart && (
+                      <div className="flex items-center text-sm text-gray-500 mt-2">
+                        <Clock className="h-4 w-4 mr-1" />
+                        <span>
+                          {new Date(meeting.dateStart).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                          {meeting.duration.hours > 0 && ` (${meeting.duration.hours}h${meeting.duration.minutes > 0 ? ` ${meeting.duration.minutes}m` : ''})`}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {meeting.location && (
+                      <div className="text-sm text-gray-500 mt-1">
+                        Location: {meeting.location}
+                      </div>
+                    )}
+                    
+                    {meeting.description && (
+                      <>
+                        <Separator className="my-2" />
+                        <div className="text-sm mt-2">
+                          <div className="font-medium mb-1">Notes:</div>
+                          <div className="text-gray-600 whitespace-pre-line">
+                            {meeting.description.length > 150 
+                              ? `${meeting.description.substring(0, 150)}...` 
+                              : meeting.description
+                            }
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
