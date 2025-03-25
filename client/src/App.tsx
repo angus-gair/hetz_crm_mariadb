@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AdminPage from "@/pages/admin";
+import CrmTest from "@/pages/CrmTest";
 
 function Router() {
   return (
@@ -16,6 +17,9 @@ function Router() {
 
       {/* Admin dashboard */}
       <Route path="/admin" component={AdminPage} />
+      
+      {/* SuiteCRM API Test */}
+      <Route path="/crm-test" component={CrmTest} />
 
       {/* Fallback to 404 */}
       <Route component={NotFound} />

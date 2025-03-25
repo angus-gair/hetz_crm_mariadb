@@ -132,24 +132,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // SuiteCRM API test endpoint
   app.get("/api/crm/test", async (req, res) => {
     try {
-      const isConnected = await suiteCRMService.testConnection();
+      console.log("Testing SuiteCRM API connection...");
+      const connectionResult = await suiteCRMService.testConnection();
 
-      if (isConnected) {
+      console.log("Connection test result:", connectionResult);
+
+      if (connectionResult.success) {
         res.json({
           success: true,
-          message: "SuiteCRM API connection is working correctly",
-          timestamp: new Date().toISOString()
+          message: connectionResult.message || "SuiteCRM API connection is working correctly",
+          timestamp: new Date().toISOString(),
+          endpoints: connectionResult.endpoints
         });
       } else {
-        throw new Error("Connection test returned false");
+        // Return a 200 status but with success: false to provide the detailed information
+        res.json({
+          success: false,
+          message: connectionResult.message || "SuiteCRM API connection test failed",
+          timestamp: new Date().toISOString(),
+          endpoints: connectionResult.endpoints
+        });
       }
     } catch (error: any) {
-      console.error("SuiteCRM API test failed:", error);
+      console.error("SuiteCRM API test failed with exception:", error);
 
       res.status(500).json({
         success: false,
         error: error.message || "Unknown error",
-        message: "SuiteCRM API test failed. Check server logs for details."
+        message: "SuiteCRM API test failed with an unexpected error. Check server logs for details.",
+        timestamp: new Date().toISOString()
       });
     }
   });
@@ -252,6 +263,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Register the lead routes
+  app.use("/api/crm/leads", leadRoutes);
 
   // Set up Apollo GraphQL Server
   try {

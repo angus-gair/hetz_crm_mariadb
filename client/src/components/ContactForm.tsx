@@ -57,20 +57,19 @@ export default function ContactForm() {
       console.log('Form data being submitted:', data);
 
       try {
-        console.log('Making request to API endpoint...');
-        const response = await fetch('/api/contacts', {
+        console.log('Making request to SuiteCRM lead endpoint...');
+        const response = await fetch('/api/crm/leads', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            first_name: data.firstName,
-            last_name: data.lastName,
+            firstName: data.firstName,
+            lastName: data.lastName,
             email: data.email,
-            phone_mobile: data.phone,
-            description: data.notes,
-            marketing_consent: data.marketingConsent,
-            lead_source: data.leadSource
+            phone: data.phone,
+            message: data.notes,
+            company: 'Website Lead'
           })
         });
 
@@ -81,10 +80,10 @@ export default function ContactForm() {
         }
 
         const result = await response.json();
-        console.log('Form submission successful:', result);
+        console.log('Lead creation successful:', result);
         return result;
       } catch (error) {
-        console.error('Form submission error:', error);
+        console.error('Lead creation error:', error);
         if (error instanceof Error) {
           throw error;
         }
@@ -94,8 +93,8 @@ export default function ContactForm() {
     onSuccess: (data) => {
       console.log('Mutation succeeded with data:', data);
       toast({
-        title: "Success",
-        description: "Thank you for contacting us. We'll be in touch soon!",
+        title: "Thanks for your interest!",
+        description: data.message || "Your information has been sent to our sales team. We'll be in touch with you shortly!",
       })
       form.reset()
     },
