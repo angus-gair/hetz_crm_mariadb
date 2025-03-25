@@ -306,20 +306,29 @@ export class SuiteCRMService {
 
       console.log('[SuiteCRM] Sending meeting creation payload:', JSON.stringify(meetingData));
 
-      // Try both module and modules endpoints
+      // Try multiple endpoint formats - different SuiteCRM installations have different paths
       let response;
       try {
-        console.log('[SuiteCRM] Trying /legacy/Api/V8/module endpoint');
-        response = await this.makeRequest('/legacy/Api/V8/module', {
+        // Try the standard API path first (according to documentation)
+        console.log('[SuiteCRM] Trying /Api/V8/module endpoint');
+        response = await this.makeRequest('/Api/V8/module', {
           method: 'POST',
           data: meetingData
         });
-      } catch (moduleError) {
-        console.log('[SuiteCRM] First endpoint failed, trying /legacy/Api/V8/module/Meetings endpoint');
-        response = await this.makeRequest('/legacy/Api/V8/module/Meetings', {
-          method: 'POST',
-          data: meetingData  // Change to data parameter for axios compatibility
-        });
+      } catch (firstError) {
+        try {
+          console.log('[SuiteCRM] First endpoint failed, trying /legacy/Api/V8/module endpoint');
+          response = await this.makeRequest('/legacy/Api/V8/module', {
+            method: 'POST',
+            data: meetingData
+          });
+        } catch (secondError) {
+          console.log('[SuiteCRM] Second endpoint failed, trying /Api/V8/module/Meetings endpoint');
+          response = await this.makeRequest('/Api/V8/module/Meetings', {
+            method: 'POST',
+            data: meetingData
+          });
+        }
       }
 
       console.log('[SuiteCRM] Meeting creation response:', JSON.stringify(response));
@@ -406,10 +415,21 @@ export class SuiteCRMService {
 
       console.log('[SuiteCRM] Creating contact:', contactData.firstName, contactData.lastName);
 
-      const response = await this.makeRequest('/legacy/Api/V8/module', {
-        method: 'POST',
-        data: data
-      });
+      // Try multiple endpoint paths for SuiteCRM compatibility
+      let response;
+      try {
+        console.log('[SuiteCRM] Trying contact creation with /Api/V8/module endpoint');
+        response = await this.makeRequest('/Api/V8/module', {
+          method: 'POST',
+          data: data
+        });
+      } catch (error) {
+        console.log('[SuiteCRM] Falling back to /legacy/Api/V8/module endpoint for contact creation');
+        response = await this.makeRequest('/legacy/Api/V8/module', {
+          method: 'POST',
+          data: data
+        });
+      }
 
       if (response.data?.id) {
         return {
@@ -457,10 +477,21 @@ export class SuiteCRMService {
 
       console.log('[SuiteCRM] Creating lead:', leadData.firstName, leadData.lastName);
 
-      const response = await this.makeRequest('/legacy/Api/V8/module', {
-        method: 'POST',
-        data: data
-      });
+      // Try multiple endpoint paths for SuiteCRM compatibility
+      let response;
+      try {
+        console.log('[SuiteCRM] Trying lead creation with /Api/V8/module endpoint');
+        response = await this.makeRequest('/Api/V8/module', {
+          method: 'POST',
+          data: data
+        });
+      } catch (error) {
+        console.log('[SuiteCRM] Falling back to /legacy/Api/V8/module endpoint for lead creation');
+        response = await this.makeRequest('/legacy/Api/V8/module', {
+          method: 'POST',
+          data: data
+        });
+      }
 
       if (response.data?.id) {
         return {
@@ -526,6 +557,10 @@ export class SuiteCRMService {
       
       // Try multiple endpoint formats to get all meetings
       const endpoints = [
+        // Standard paths according to documentation
+        '/Api/V8/module/Meetings',
+        '/Api/V8/modules/Meetings',
+        // Legacy paths that might be needed for older or customized installations
         '/legacy/Api/V8/module/Meetings',
         '/legacy/Api/V8/modules/Meetings'
       ];
@@ -643,7 +678,12 @@ export class SuiteCRMService {
       
       // Try multiple endpoint formats and date formats
       const endpoints = [
-        // Current working format based on logs
+        // Standard API paths (according to documentation)
+        `/Api/V8/module/Meetings?filter[operator]=and&filter[date_start][gte]=${encodeURIComponent(dateIso.start)}&filter[date_start][lte]=${encodeURIComponent(dateIso.end)}`,
+        
+        `/Api/V8/module/Meetings?filter[operator]=and&filter[date_start][gte]=${encodeURIComponent(dateYmd.start)}&filter[date_start][lte]=${encodeURIComponent(dateYmd.end)}`,
+        
+        // Legacy paths (for older or customized installations)
         `/legacy/Api/V8/module/Meetings?filter[operator]=and&filter[date_start][gte]=${encodeURIComponent(dateIso.start)}&filter[date_start][lte]=${encodeURIComponent(dateIso.end)}`,
         
         // Try with YMD format
@@ -658,7 +698,8 @@ export class SuiteCRMService {
         // Direct module ID lookup for March 26, 2025
         // If testing specifically for March 26, 2025
         ...(dateYmd.start === '2025-03-26' ? [
-          '/legacy/Api/V8/module/Meetings',  // Try getting all meetings instead of filtering
+          '/Api/V8/module/Meetings',  // Try getting all meetings instead of filtering
+          '/legacy/Api/V8/module/Meetings'
         ] : [])
       ];
       
@@ -703,7 +744,9 @@ export class SuiteCRMService {
       }
       
       // If we're fetching all meetings (for testing), filter them in memory
-      if (successEndpoint === '/legacy/Api/V8/module/Meetings' && Array.isArray(meetings)) {
+      if ((successEndpoint === '/legacy/Api/V8/module/Meetings' || 
+           successEndpoint === '/Api/V8/module/Meetings') && 
+           Array.isArray(meetings)) {
         const targetDate = dateYmd.start;
         meetings = meetings.filter(meeting => {
           const meetingDate = (meeting.attributes?.date_start || '').split('T')[0];
