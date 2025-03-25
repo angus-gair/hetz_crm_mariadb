@@ -1,0 +1,135 @@
+It looks like my research tool is currently unavailable. However, I can still provide general guidance based on existing SuiteCRM 8.x REST API documentation.
+
+### **Exporting Calendar Events (Fetching Calendar Data)**
+To retrieve calendar events, you will need to query the **Meetings**, **Calls**, and **Tasks** modules, since SuiteCRM's calendar events are based on these modules.
+
+#### **1. API Endpoint to Retrieve Calendar Events**
+SuiteCRM 8 does not have a dedicated "Calendar" module, but you can fetch calendar events using:
+```
+GET {YOUR_SUITECRM_URL}/Api/V8/modules/Meetings
+GET {YOUR_SUITECRM_URL}/Api/V8/modules/Calls
+GET {YOUR_SUITECRM_URL}/Api/V8/modules/Tasks
+```
+This will return scheduled meetings, calls, and tasks that appear on the calendar.
+
+#### **2. Example API Request for Retrieving Events**
+```http
+GET https://yourcrm.example.com/Api/V8/modules/Meetings?filter[date_start][$gte]=2024-01-01T00:00:00Z
+Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+```
+This retrieves all meetings from January 1, 2024, onward. You can replace `Meetings` with `Calls` or `Tasks` to get other event types.
+
+##### **Optional Filters for Exporting Calendar Data**
+- `filter[date_start][$gte]=YYYY-MM-DDTHH:MM:SSZ` → Get events after a certain date.
+- `filter[date_start][$lte]=YYYY-MM-DDTHH:MM:SSZ` → Get events before a certain date.
+- `filter[assigned_user_id]=<user_id>` → Get events assigned to a specific user.
+
+#### **3. Sample JSON Response (Exported Calendar Data)**
+```json
+{
+  "data": [
+    {
+      "id": "meeting123",
+      "type": "Meetings",
+      "attributes": {
+        "name": "Project Review Meeting",
+        "date_start": "2024-03-25T10:00:00Z",
+        "date_end": "2024-03-25T11:00:00Z",
+        "status": "Planned",
+        "assigned_user_id": "user123",
+        "description": "Quarterly project review."
+      }
+    }
+  ]
+}
+```
+This JSON response contains event details, including name, start and end times, assigned user, and status.
+
+---
+
+### **Creating a Calendar Event (Meeting, Call, or Task)**
+To add events to the calendar, you create records in the **Meetings**, **Calls**, or **Tasks** modules.
+
+#### **1. API Endpoint to Create a Calendar Event**
+```
+POST {YOUR_SUITECRM_URL}/Api/V8/modules/Meetings
+POST {YOUR_SUITECRM_URL}/Api/V8/modules/Calls
+POST {YOUR_SUITECRM_URL}/Api/V8/modules/Tasks
+```
+Use the appropriate module based on the type of event.
+
+#### **2. Example API Request to Create a Calendar Event**
+```http
+POST https://yourcrm.example.com/Api/V8/modules/Meetings
+Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+```
+```json
+{
+  "data": {
+    "type": "Meetings",
+    "attributes": {
+      "name": "API Created Meeting",
+      "date_start": "2024-03-30T14:00:00Z",
+      "duration_hours": 1,
+      "duration_minutes": 30,
+      "status": "Planned",
+      "description": "This is a test meeting created via API.",
+      "assigned_user_id": "user123"
+    }
+  }
+}
+```
+This creates a new meeting that lasts 1 hour 30 minutes, assigned to `user123`.
+
+#### **3. Adding Attendees (Users and Contacts)**
+To invite participants, include a `relationships` object in the request.
+```json
+{
+  "data": {
+    "type": "Meetings",
+    "attributes": {
+      "name": "Team Meeting",
+      "date_start": "2024-04-05T15:00:00Z",
+      "duration_hours": 1
+    },
+    "relationships": {
+      "users": {
+        "data": [
+          { "id": "user456", "type": "Users" }
+        ]
+      },
+      "contacts": {
+        "data": [
+          { "id": "contact789", "type": "Contacts" }
+        ]
+      }
+    }
+  }
+}
+```
+This schedules a meeting and invites a user (`user456`) and a contact (`contact789`).
+
+---
+
+### **Authentication & Headers**
+Include the following headers in all API requests:
+```
+Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+```
+If using session authentication (instead of OAuth2), include:
+```
+X-CSRF-Token: YOUR_CSRF_TOKEN
+```
+
+---
+
+### **Summary**
+1. **Exporting Calendar Data:** Use `GET /Api/V8/modules/Meetings`, `Calls`, or `Tasks` with date filters.
+2. **Creating Calendar Events:** Use `POST /Api/V8/modules/Meetings`, `Calls`, or `Tasks` with event details.
+3. **Adding Participants:** Use the `relationships` object to link users and contacts.
+4. **Authentication:** Use an OAuth2 Bearer Token or a CSRF token with session authentication.
+
+Let me know if you need more details! 🚀

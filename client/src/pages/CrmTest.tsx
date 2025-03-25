@@ -101,7 +101,7 @@ export default function CrmTest() {
       email: 'test@example.com',
       phone: '123-456-7890',
       notes: 'Test consultation from CRM test page',
-      preferredDate: new Date().toISOString().split('T')[0],
+      preferredDate: '2025-03-26', // Set to March 26, 2025 to match our calendar test
       preferredTime: '10:00',
     });
   };
@@ -285,7 +285,7 @@ export default function CrmTest() {
                 <li>Name: Test User</li>
                 <li>Email: test@example.com</li>
                 <li>Phone: 123-456-7890</li>
-                <li>Preferred Date: Today</li>
+                <li>Preferred Date: March 26, 2025</li>
                 <li>Preferred Time: 10:00</li>
                 <li>Notes: Test consultation from CRM test page</li>
               </ul>
@@ -335,6 +335,8 @@ function CalendarContent() {
       }
       return response.json();
     },
+    // Refresh every 10 seconds to check for new meetings
+    refetchInterval: 10000,
   });
   
   const meetings = calendarData?.meetings || [];
