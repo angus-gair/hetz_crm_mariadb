@@ -83,8 +83,15 @@ export class SuiteCRMService {
       }
       this.lastLoginAttempt = now;
       
+      // Using the full path for token endpoint as provided by the user
+      const tokenUrl = process.env.SUITECRM_URL?.includes('legacy/Api/access_token') 
+        ? process.env.SUITECRM_URL 
+        : `${this.baseUrl}/Api/access_token`;
+      
+      console.log('[SuiteCRM] Using token URL:', tokenUrl);
+      
       const response = await axios.post<TokenResponse>(
-        `${this.baseUrl}/Api/V8/oauth2/token`, 
+        tokenUrl, 
         {
           grant_type: 'password',
           client_id: clientId,
@@ -144,26 +151,88 @@ export class SuiteCRMService {
     }
   }
 
-  // Test SuiteCRM API connection
-  async testConnection(): Promise<boolean> {
+  // Test SuiteCRM API connection with detailed endpoint status
+  async testConnection(): Promise<{
+    success: boolean;
+    message?: string;
+    endpoints?: Array<{
+      name: string;
+      status: number;
+      statusText: string;
+      error?: string;
+      data?: any;
+    }>;
+  }> {
+    const endpoints = [];
+    let overallSuccess = false;
+
     try {
-      // Try to connect to API endpoints
-      const token = await this.getValidToken();
-      const testEndpoint = '/Api/V8/meta/now';
-      const response = await axios.get(
-        `${this.baseUrl}${testEndpoint}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.api+json'
-          },
-          timeout: this.timeout
+      // Step 1: Test OAuth token endpoint first
+      console.log('[SuiteCRM] Testing OAuth token acquisition...');
+      try {
+        const token = await this.getValidToken();
+        endpoints.push({
+          name: 'V8 Token Endpoint',
+          status: 200,
+          statusText: 'OK',
+          data: { token_acquired: true }
+        });
+        
+        // Step 2: Test a basic metadata endpoint
+        console.log('[SuiteCRM] Testing metadata endpoint...');
+        try {
+          const testEndpoint = '/Api/V8/meta/modules';
+          const response = await axios.get(
+            `${this.baseUrl}${testEndpoint}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.api+json'
+              },
+              timeout: this.timeout
+            }
+          );
+          
+          endpoints.push({
+            name: 'V8 Metadata Endpoint',
+            status: response.status,
+            statusText: response.statusText,
+            data: { modules: Object.keys(response.data.modules || {}).length }
+          });
+          
+          // If we get here, the connection test is successful
+          overallSuccess = true;
+        } catch (metaError: any) {
+          endpoints.push({
+            name: 'V8 Metadata Endpoint',
+            status: metaError.response?.status || 500,
+            statusText: metaError.response?.statusText || 'Error',
+            error: metaError.message
+          });
         }
-      );
-      return response.status === 200;
-    } catch (error) {
+      } catch (tokenError: any) {
+        endpoints.push({
+          name: 'V8 Token Endpoint',
+          status: tokenError.response?.status || 500,
+          statusText: tokenError.response?.statusText || 'Error',
+          error: tokenError.message
+        });
+      }
+      
+      return {
+        success: overallSuccess,
+        message: overallSuccess 
+          ? 'Successfully connected to SuiteCRM API' 
+          : 'Failed to connect to one or more SuiteCRM endpoints',
+        endpoints
+      };
+    } catch (error: any) {
       console.error('[SuiteCRM] Connection test failed:', error);
-      return false;
+      return {
+        success: false,
+        message: `Connection test failed: ${error.message}`,
+        endpoints
+      };
     }
   }
 
