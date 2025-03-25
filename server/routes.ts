@@ -9,6 +9,7 @@ import { buildSchema } from "type-graphql";
 import { suiteCRMService } from "./services/suitecrm";
 import { SuiteCRMResolver } from "./graphql/resolvers";
 import leadRoutes from "./routes/lead";
+import { crmRoutes } from "./routes/crm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Global middleware
