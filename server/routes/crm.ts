@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { suiteCRMService } from '../services/suitecrm';
+import axios from 'axios';
 
 const router = Router();
 
@@ -28,6 +29,174 @@ router.get('/get-token', async (_req: Request, res: Response) => {
     return res.status(500).json({
       success: false, 
       message: `Failed to get authentication token: ${error instanceof Error ? error.message : String(error)}`
+    });
+  }
+});
+
+// Test endpoint to debug meeting creation
+router.post('/test-meeting-create', async (req: Request, res: Response) => {
+  try {
+    const { name, email, phone, notes, preferredDate, preferredTime } = req.body;
+    
+    if (!name || !email || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, and phone are required fields'
+      });
+    }
+    
+    console.log('[TEST] Starting meeting creation test');
+    
+    // Get a fresh token directly
+    const token = await (suiteCRMService as any).getValidToken();
+    console.log('[TEST] Got token:', token.slice(0, 10) + '...');
+    
+    // Set up meeting date/time
+    let meetingDate = new Date();
+    if (preferredDate) {
+      meetingDate = new Date(preferredDate);
+      if (preferredTime) {
+        const [hours, minutes] = preferredTime.split(':');
+        meetingDate.setHours(parseInt(hours), parseInt(minutes));
+      }
+    }
+    
+    // End time 1 hour later
+    const endDate = new Date(meetingDate);
+    endDate.setHours(endDate.getHours() + 1);
+    
+    console.log(`[TEST] Meeting date: ${meetingDate.toISOString()}`);
+    console.log(`[TEST] End date: ${endDate.toISOString()}`);
+    
+    // Get SuiteCRM base URL
+    const baseUrl = (suiteCRMService as any).baseUrl;
+    console.log(`[TEST] Using base URL: ${baseUrl}`);
+    
+    // Try different payload formats
+    const payloads = [
+      // Format 1: JSON:API format with ISO dates
+      {
+        data: {
+          type: "Meetings",
+          attributes: {
+            name: `Consultation with ${name}`,
+            date_start: meetingDate.toISOString(),
+            date_end: endDate.toISOString(),
+            status: "Planned",
+            description: `Contact Info:\nEmail: ${email}\nPhone: ${phone}\n\nNotes: ${notes || 'No additional notes'}`,
+            duration_hours: 1,
+            duration_minutes: 0,
+            assigned_user_id: "1"
+          }
+        }
+      },
+      
+      // Format 2: JSON:API format with SQL-style dates
+      {
+        data: {
+          type: "Meetings",
+          attributes: {
+            name: `Consultation with ${name}`,
+            date_start: meetingDate.toISOString().replace('T', ' ').split('.')[0],
+            date_end: endDate.toISOString().replace('T', ' ').split('.')[0],
+            status: "Planned",
+            description: `Contact Info:\nEmail: ${email}\nPhone: ${phone}\n\nNotes: ${notes || 'No additional notes'}`,
+            duration_hours: 1,
+            duration_minutes: 0
+          }
+        }
+      },
+      
+      // Format 3: Standard JSON with ISO dates
+      {
+        name: `Consultation with ${name}`,
+        date_start: meetingDate.toISOString(),
+        date_end: endDate.toISOString(),
+        status: "Planned",
+        description: `Contact Info:\nEmail: ${email}\nPhone: ${phone}\n\nNotes: ${notes || 'No additional notes'}`,
+        duration_hours: 1,
+        duration_minutes: 0
+      }
+    ];
+    
+    // Endpoints to try
+    const endpoints = [
+      '/Api/V8/module',
+      '/legacy/Api/V8/module',
+      '/Api/V8/module/Meetings',
+      '/legacy/Api/V8/module/Meetings',
+      '/rest/v10/Meetings',
+      '/Api/REST/V8/Meetings'
+    ];
+    
+    // Try each combination
+    const results = [];
+    
+    for (const endpoint of endpoints) {
+      for (const [index, payload] of payloads.entries()) {
+        const fullUrl = `${baseUrl}${endpoint}`;
+        console.log(`[TEST] Trying endpoint: ${fullUrl} with payload format ${index + 1}`);
+        console.log(`[TEST] Payload: ${JSON.stringify(payload)}`);
+        
+        try {
+          const response = await axios({
+            method: 'post',
+            url: fullUrl,
+            data: payload,
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            timeout: 10000 // 10 second timeout
+          });
+          
+          console.log(`[TEST] Success! Response status: ${response.status}`);
+          console.log(`[TEST] Response data: ${JSON.stringify(response.data)}`);
+          
+          results.push({
+            success: true,
+            endpoint,
+            payloadFormat: index + 1,
+            response: response.data,
+            status: response.status
+          });
+          
+        } catch (error: any) {
+          console.log(`[TEST] Error! Status: ${error.response?.status || 'unknown'}`);
+          console.log(`[TEST] Error message: ${error.message}`);
+          console.log(`[TEST] Response data: ${JSON.stringify(error.response?.data || {})}`);
+          
+          results.push({
+            success: false,
+            endpoint,
+            payloadFormat: index + 1,
+            error: error.message,
+            status: error.response?.status,
+            responseData: error.response?.data || {}
+          });
+        }
+      }
+    }
+    
+    // Return all results for analysis
+    return res.json({
+      success: results.some(r => r.success),
+      results,
+      summary: {
+        totalAttempts: results.length,
+        successfulAttempts: results.filter(r => r.success).length,
+        bestEndpoint: results.find(r => r.success)?.endpoint || 'None found',
+        bestFormat: results.find(r => r.success)?.payloadFormat || 'None found'
+      }
+    });
+    
+  } catch (error) {
+    console.error('[TEST] Error in test meeting creation:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An unexpected error occurred during test meeting creation',
+      error: String(error)
     });
   }
 });
