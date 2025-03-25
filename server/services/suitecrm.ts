@@ -284,7 +284,7 @@ export class SuiteCRMService {
       // Create a unique name for the meeting to help with identification
       const meetingName = `Consultation with ${consultationData.name} - ${new Date().toISOString().substring(0, 19).replace('T', ' ')}`;
 
-      // Create meeting using API V8 
+      // Create meeting using API V8 - Format according to JsonAPI spec
       const meetingData = {
         data: {
           type: "Meetings",
@@ -294,12 +294,16 @@ export class SuiteCRMService {
             date_end: formatDate(endDate),
             status: "Planned",
             description: `Contact Info:\nEmail: ${consultationData.email}\nPhone: ${consultationData.phone}\n\nNotes: ${consultationData.notes || 'No additional notes'}`,
-            type: "Consultation",
-            // Add other fields that might be required
             duration_hours: 1,
             duration_minutes: 0,
-            // Add the date in additional formats as custom fields to ensure it's properly indexed
-            date_formatted: meetingDate.toISOString().split('T')[0]
+            // Include additional contact details
+            email: consultationData.email,
+            phone: consultationData.phone,
+            direction: "Outbound",
+            parent_type: "Contacts",
+            // Additional fields to help with calendar view
+            date: meetingDate.toISOString().split('T')[0],
+            time_start: meetingDate.toISOString().split('T')[1].substring(0, 5)
           }
         }
       };
