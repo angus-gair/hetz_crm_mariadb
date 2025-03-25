@@ -8,6 +8,7 @@ import { expressMiddleware } from "@apollo/server/express4";
 import { buildSchema } from "type-graphql";
 import { suiteCRMService } from "./services/suitecrm";
 import { SuiteCRMResolver } from "./graphql/resolvers";
+import leadRoutes from "./routes/lead";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Global middleware
